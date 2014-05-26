@@ -1,0 +1,11 @@
+Repository of scripts and converters to store the segmentations, SUV and 
+measurements produced by QIICR Iowa use case for a single timpoint of treatment
+into DICOM format.
+
+The initial assumptions are the following:
+ 1) the data is arranged in a predefined directory structure;
+ 2) the set of structures and codes is predefined and fixed;
+ 3) ...
+
+The scripts leverage related tools that calculate SUVbw factor and 
+quantitative indices over the ROI.
