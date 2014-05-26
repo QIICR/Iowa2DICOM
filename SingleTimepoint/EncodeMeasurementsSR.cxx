@@ -171,8 +171,8 @@ int main(int argc, char** argv)
 
   // TODO: initialize to more meaningful values
   AddObserverContext(tree, QIICR_DEVICE_OBSERVER_UID,
-                     "tid1411test",
-                     "QIICR", "0.0.1", "0");
+                     Iowa2DICOM_WC_URL,
+                     "QIICR", Iowa2DICOM_WC_REVISION, "0");
 
   {
     DSRCodeTreeNode *procedureCode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);

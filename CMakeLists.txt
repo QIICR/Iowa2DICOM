@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 2.8)
 
 set(LOCAL_SEM_NO_INSTALL TRUE)
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/CMake/FindGit.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/CMake/MacroExtractRepositoryInfo.cmake)
 
 SlicerMacroExtractRepositoryInfo(VAR_PREFIX Iowa2DICOM)

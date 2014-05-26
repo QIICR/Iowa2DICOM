@@ -14,5 +14,6 @@
 #define __Iowa2DICOMVersionConfigure_h
 
 #define Iowa2DICOM_WC_REVISION "@Iowa2DICOM_WC_REVISION@"
+#define Iowa2DICOM_WC_URL "@Iowa2DICOM_WC_URL@"
 
 #endif // __vtkReportingVersionConfigure_h
