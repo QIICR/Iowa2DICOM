@@ -182,6 +182,11 @@ int main(int argc, char** argv)
   }
 
   AddImageLibrary(tree, petDatasets);
+  for(int i=0;i<petDatasets.size();i++){
+    doc->getCurrentRequestedProcedureEvidence().addItem(*petDatasets[i]);
+  }
+  doc->getCurrentRequestedProcedureEvidence().addItem(*rwvmDataset);
+  doc->getCurrentRequestedProcedureEvidence().addItem(*segDataset);
 
   // Encode measurements
   {
@@ -783,32 +788,7 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
   }
 
   {
-    DcmElement *e;
-    char* rwvmInstanceUIDPtr;
-    CHECK_COND(rwvmDataset->findAndGetElement(DCM_SOPInstanceUID, e));
-    e->getString(rwvmInstanceUIDPtr);
-    DSRCompositeTreeNode *rwvmNode = new DSRCompositeTreeNode(DSRTypes::RT_contains);
-    DSRCompositeReferenceValue refValue(UID_RealWorldValueMappingStorage, rwvmInstanceUIDPtr);
-    rwvmNode->setValue(refValue);
-    CHECK_COND(rwvmNode->setConceptName(DSRCodedEntryValue("dd3001","DCM","Real World Value Map used for measurements")));
-    CHECK_EQUAL(tree.addContentItem(rwvmNode, DSRTypes::AM_afterCurrent), rwvmNode);
-  }
-
-  {
-    /* this is not necessary - mutually exclusive with the source series
-    for(int i=0;i<petDatasets.size();i++){
-      DcmElement *e;
-      char* petInstanceUIDPtr;
-      CHECK_COND(petDatasets[i]->findAndGetElement(DCM_SOPInstanceUID, e));
-      e->getString(petInstanceUIDPtr);
-      DSRImageTreeNode *imageNode = new DSRImageTreeNode(DSRTypes::RT_contains);
-      DSRImageReferenceValue refValue(UID_PositronEmissionTomographyImageStorage, petInstanceUIDPtr);
-      CHECK_COND(imageNode->setConceptName(DSRCodedEntryValue("121233","DCM","Source image for segmentation")));
-      imageNode->setValue(refValue);
-      CHECK_EQUAL(tree.addContentItem(imageNode, DSRTypes::AM_afterCurrent), imageNode);
-    }
-    */
-    DSRUIDRefTreeNode *seriesUIDNode = new DSRUIDRefTreeNode(DSRTypes::RT_hasObsContext);
+    DSRUIDRefTreeNode *seriesUIDNode = new DSRUIDRefTreeNode(DSRTypes::RT_contains);
     //CHECK_COND(trackingUIDNode);
     char* seriesInstanceUID;
     DcmElement *e;
@@ -820,14 +800,14 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
                 seriesUIDNode);
   }
 
-
   for(int i=0;i<measurements.size();i++){
     DSRNumTreeNode *measurementNode = new DSRNumTreeNode(DSRTypes::RT_contains);
+
     if(std::string(measurements[i].UnitsCode.getCodeValue().c_str()) == "{SUVbw}g/ml"){
-      measurementNode->setConceptName(DSRCodedEntryValue("{SUVbw}g/ml","UCUM","Standardized Uptake Value body weight"));
+      CHECK_COND(measurementNode->setConceptName(DSRCodedEntryValue("250122","99PMP","SUVbw")));
       DSRNumericMeasurementValue measurementValue(measurements[i].MeasurementValue.c_str(),
                                                   measurements[i].UnitsCode);
-      measurementNode->setValue(measurementValue);
+      CHECK_COND(measurementNode->setValue(measurementValue));
       CHECK_EQUAL(tree.addContentItem(measurementNode, DSRTypes::AM_afterCurrent),measurementNode);
 
       DSRCodeTreeNode *modNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
@@ -846,6 +826,24 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
                                                   measurements[i].UnitsCode);
       measurementNode->setValue(measurementValue);
       CHECK_EQUAL(tree.addContentItem(measurementNode, DSRTypes::AM_afterCurrent),measurementNode);
+
+      DSRCodeTreeNode *modNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
+      CHECK_COND(modNode->setConceptName(DSRCodedEntryValue("G-C036","DCM","Measurement Method")));
+      CHECK_COND(modNode->setCode("250132", "99PMP","SUV body weight calculation method"));
+      CHECK_EQUAL(tree.addContentItem(modNode, DSRTypes::AM_belowCurrent), modNode);
+      tree.goUp();
+    }
+    {
+      DcmElement *e;
+      char* rwvmInstanceUIDPtr;
+      CHECK_COND(rwvmDataset->findAndGetElement(DCM_SOPInstanceUID, e));
+      e->getString(rwvmInstanceUIDPtr);
+      DSRCompositeTreeNode *rwvmNode = new DSRCompositeTreeNode(DSRTypes::RT_inferredFrom);
+      DSRCompositeReferenceValue refValue(UID_RealWorldValueMappingStorage, rwvmInstanceUIDPtr);
+      rwvmNode->setValue(refValue);
+      CHECK_COND(rwvmNode->setConceptName(DSRCodedEntryValue("dd3001","DCM","Real World Value Map used for measurements")));
+      CHECK_EQUAL(tree.addContentItem(rwvmNode, DSRTypes::AM_belowCurrent), rwvmNode);
+      tree.goUp();
     }
   }
 }
