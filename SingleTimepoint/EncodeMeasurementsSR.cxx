@@ -114,7 +114,8 @@ void MapFileNameToStructureCode(std::string filename, DSRCodedEntryValue&);
 void TokenizeString(std::string,std::vector<std::string>&, std::string delimiter=" ");
 
 void ReadQuantitiesDictionary(std::string filename, QuantitiesDictionaryType&);
-
+void AddCodingScheme(DSRDocument *, const char* id, const char* uidRoot,
+                     const char* name, const char* org = NULL);
 
 int main(int argc, char** argv)
 {
@@ -177,11 +178,12 @@ int main(int argc, char** argv)
   {
     DSRCodeTreeNode *procedureCode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
     CHECK_COND(procedureCode->setConceptName(DSRCodedEntryValue("121058","DCM","Procedure reported")));
-    CHECK_COND(procedureCode->setCode("BCID_cc1c2","DCM","Quantitative Diagnostic Imaging Procedure"));
+    CHECK_COND(procedureCode->setCode("P5-080FF","SRT","PET/CT FDG imaging of the whole body"));
     CHECK_EQUAL(tree.addContentItem(procedureCode, DSRTypes::AM_afterCurrent), procedureCode);
   }
 
   AddImageLibrary(tree, petDatasets);
+
   for(int i=0;i<petDatasets.size();i++){
     doc->getCurrentRequestedProcedureEvidence().addItem(*petDatasets[i]);
   }
@@ -191,7 +193,7 @@ int main(int argc, char** argv)
   // Encode measurements
   {
     DSRContainerTreeNode *measurementsContainer = new DSRContainerTreeNode(DSRTypes::RT_contains);
-    CHECK_COND(measurementsContainer->setConceptName(DSRCodedEntryValue("dd1d91","DCM","Measurements")));
+    CHECK_COND(measurementsContainer->setConceptName(DSRCodedEntryValue("250200","99PMP","Measurements")));
     CHECK_EQUAL(tree.addContentItem(measurementsContainer, DSRTypes::AM_afterCurrent), measurementsContainer);
 
     // create a volumetric ROI measurements container (TID 1411) for each ROI, with each measurement container
@@ -229,10 +231,8 @@ int main(int argc, char** argv)
   doc->setSeriesDate(contentDate.c_str());
   doc->setSeriesTime(contentTime.c_str());
 
-  doc->getCodingSchemeIdentification().addItem("99QIICR");
-  doc->getCodingSchemeIdentification().setCodingSchemeUID(QIICR_CODING_SCHEME_UID_ROOT);
-  doc->getCodingSchemeIdentification().setCodingSchemeName("QIICR Coding Scheme");
-  doc->getCodingSchemeIdentification().setCodingSchemeResponsibleOrganization("Quantitative Imaging for Cancer Research, http://qiicr.org");
+  AddCodingScheme(doc, "99QIICR", QIICR_CODING_SCHEME_UID_ROOT, "QIICR Coding Scheme", "Quantitative Imaging for Cancer Research, http://qiicr.org");
+  AddCodingScheme(doc, "99PMP", "1.3.6.1.4.1.5962.98.1", "PixelMed Publishing");
 
   std::cout << "Before writing the dataset" << std::endl;
   doc->write(*datasetSR);
@@ -828,7 +828,7 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
       CHECK_EQUAL(tree.addContentItem(measurementNode, DSRTypes::AM_afterCurrent),measurementNode);
 
       DSRCodeTreeNode *modNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
-      CHECK_COND(modNode->setConceptName(DSRCodedEntryValue("G-C036","DCM","Measurement Method")));
+      CHECK_COND(modNode->setConceptName(DSRCodedEntryValue("G-C036","SRT","Measurement Method")));
       CHECK_COND(modNode->setCode("250132", "99PMP","SUV body weight calculation method"));
       CHECK_EQUAL(tree.addContentItem(modNode, DSRTypes::AM_belowCurrent), modNode);
       tree.goUp();
@@ -841,7 +841,7 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
       DSRCompositeTreeNode *rwvmNode = new DSRCompositeTreeNode(DSRTypes::RT_inferredFrom);
       DSRCompositeReferenceValue refValue(UID_RealWorldValueMappingStorage, rwvmInstanceUIDPtr);
       rwvmNode->setValue(refValue);
-      CHECK_COND(rwvmNode->setConceptName(DSRCodedEntryValue("dd3001","DCM","Real World Value Map used for measurements")));
+      CHECK_COND(rwvmNode->setConceptName(DSRCodedEntryValue("250201","99PMP","Real World Value Map used for measurements")));
       CHECK_EQUAL(tree.addContentItem(rwvmNode, DSRTypes::AM_belowCurrent), rwvmNode);
       tree.goUp();
     }
@@ -865,6 +865,19 @@ void ReadQuantitiesDictionary(std::string filename, QuantitiesDictionaryType &di
     dict[tokens[0]] = entry;
   }
 }
+
+void AddCodingScheme(DSRDocument *doc,
+                     const char* id,
+                     const char* uidRoot,
+                     const char* name,
+                     const char* org){
+  doc->getCodingSchemeIdentification().addItem(id);
+  doc->getCodingSchemeIdentification().setCodingSchemeUID(uidRoot);
+  doc->getCodingSchemeIdentification().setCodingSchemeName(name);
+  if(org)
+    doc->getCodingSchemeIdentification().setCodingSchemeResponsibleOrganization(org);
+}
+
 
 #if 0
 
