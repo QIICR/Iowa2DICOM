@@ -748,7 +748,7 @@ void MapFileNameToStructureCode(std::string filename, DSRCodedEntryValue& code){
   } else if(filename.find("aorta") != std::string::npos){
     code = DSRCodedEntryValue("T-42300","SRT","Aortic arch");
   } else if(filename.find("tumor") != std::string::npos){
-    code = DSRCodedEntryValue("111462","DCM","Solid mass (a tumor or lesion)");
+    code = DSRCodedEntryValue("M-8FFFF","SRT","Neoplasm");
   } else {
     OFLOG_FATAL(logger, "Failed to map region file name to anatomic structure!");
     throw -2;
