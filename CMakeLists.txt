@@ -19,6 +19,12 @@ include(${SlicerExecutionModel_USE_FILE})
 include(${CMAKE_CURRENT_BINARY_DIR})
 
 find_package(DCMTK REQUIRED)
-include_directories(${DCMTK_INCLUDE_DIRS})
+find_package(ITK REQUIRED)
 
+include(${ITK_USE_FILE})
+
+include_directories(${DCMTK_INCLUDE_DIRS})
+include_directories(${ITK_INCLUDE_DIRS})
+
+add_subdirectory(ConvertSegmentations)
 add_subdirectory(SingleTimepoint)

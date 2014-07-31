@@ -1,0 +1,25 @@
+This example dataset consists of data for 3 patients with head/neck cancer:
+
+Each of the patients has a pre-treatment PET/CT scan (scan1) and one or several post-treatment scans (scan2, scan3, ...). In each of the scans the tumors and hot lymph nodes were traced manually in the PET scans by a radiation oncologist and stored as a labeled volume dataset. As a convention, label 1 was used for the primary tumor, label 2 for the hottest lymph node, label 3, 4, 5 etc. for other uptake regions:
+  - Patient 62: Had initially a primary tumor and 1 hot node. Nothing was identified in scan 2 and 3. In scan 4 one hot node is present.
+  - Patient 71: Had initially a primary tumor and 6 hot nodes. In the second scan the primary tumor consisted of two unconnected parts (both have label 1), and 1 hot node is visible. In the third scan the primary tumor is gone but 1 hot node remains. 
+  - Patient 244: Had initially 1 tumor and three hot nodes, all of them were gone in the first post-treatment scan. In the second post-treatment scan the patient showed a hot node in the lung adjacent to the heart. Note, that the utilized label for this distant node does not correspond to the node with the same label in the pre-treatment scan.
+
+In addition:
+  - For one PET/CT dataset (patient244/scan3), a lymph node in the lung was contoured in the CT dataset (patient) by a technician.
+  - For all scans reference regions for uptake measurement (in liver, aortic arch, and the cerebellum) were identified by automated algorithms. The identified regions are stored as labeled volume datasets.
+
+- For each of the PET/CT scans the related data is stored in a separate folder containing:
+  PT.vtk ... the SUVbw normalized PET scan
+  CT.vtk ... the CT scan of the PET/CT scan
+  PT_regions.nrrd ... labeled volume dataset with tracings of the tumors/lymph nodes in the PET scan
+  CT_regions.nrrd ... only for patient244/scan3: labeled volume dataset (same size/resolution as the CT scan) with tracing of the tumors/lymph nodes in the CT scan
+  cerebellum.nii.gz ... reference region identified for measuring uptake in the cerebellum
+  aorta.nii.gz ... reference region identified for measuring uptake in the aortic arch
+  liver.nii.gz ... reference region identified for measuring uptake in the liver
+
+This dataset does NOT contain:
+  - Quantitative indices derived from the data (e.g. CT segmentation based tumor volume, PET SUV average, average tracer uptake of node relative to average uptake in liver reference region, etc. )
+  - RECIST based measurements, SUV_peak location, etc.
+  - co-registered contrast-enhanced CT scan with segmentations
+  
