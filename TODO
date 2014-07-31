@@ -1,0 +1,5 @@
+* fix encoding of the SUVbw concept name -- currently is using units code
+* encode finding site
+* fix encoding of the image library
+* add encoding of multiple timepoints: create a separate SR for each time
+   point, maintain the same UID for individual tumors (see Doc/data_description.txt)
