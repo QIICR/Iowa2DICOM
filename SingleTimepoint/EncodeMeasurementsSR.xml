@@ -45,7 +45,7 @@
     <file>
       <name>quantityTermsFileName</name>
       <label>Dictionary of coded terms for quantities and units</label>
-      <channel>output</channel>
+      <channel>input</channel>
       <longflag>quantityTerms</longflag>
       <description>Comma-delimited file, see documentation for details</description>
     </file>
