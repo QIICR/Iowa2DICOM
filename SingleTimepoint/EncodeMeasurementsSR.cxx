@@ -19,7 +19,8 @@
 #include "dcmtk/dcmdata/dcuid.h"
 #include "dcmtk/dcmdata/dcfilefo.h"
 #include "dcmtk/dcmsr/dsriodcc.h"
-#include "dcmtk/dcmiod/modhelp.h"
+//#include "dcmtk/dcmiod/modhelp.h"
+#include "dcmtk/dcmdata/modhelp.h"
 
 #include "dcmtk/ofstd/oftest.h"
 
@@ -703,9 +704,10 @@ void ReadMeasurementsForStructure(std::string filename, Measurements &measuremen
     f.getline(fLine, 256);
     if(!f.eof()){
       ROIMeasurementType m;
-      f.getline(fLine, 256);
-      if(f.eof())
-        break;
+      //f.getline(fLine, 256);
+      //if(f.eof())
+      //  break;
+      //std::cout << "  " << std::string(fLine) << std::endl;
       TokenizeString(std::string(fLine), tokens, " ");
       if(dict.find(tokens[0]) == dict.end()){
         OFLOG_FATAL(logger, "Failed to find mapping for " << tokens[0]);
@@ -850,7 +852,8 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
 
 void ReadQuantitiesDictionary(std::string filename, QuantitiesDictionaryType &dict){
   std::ifstream f;
-  f.open(filename);
+  f.open(filename.c_str());
+  //f.open(filename);
   char fLine[256];
   f.getline(fLine,256); // skip header
   while(!f.eof()){
