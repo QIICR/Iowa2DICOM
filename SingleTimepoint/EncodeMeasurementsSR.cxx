@@ -19,8 +19,8 @@
 #include "dcmtk/dcmdata/dcuid.h"
 #include "dcmtk/dcmdata/dcfilefo.h"
 #include "dcmtk/dcmsr/dsriodcc.h"
-//#include "dcmtk/dcmiod/modhelp.h"
-#include "dcmtk/dcmdata/modhelp.h"
+#include "dcmtk/dcmiod/modhelp.h"
+//#include "dcmtk/dcmdata/modhelp.h"
 
 #include "dcmtk/ofstd/oftest.h"
 
