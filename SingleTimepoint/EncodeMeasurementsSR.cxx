@@ -19,8 +19,8 @@
 #include "dcmtk/dcmdata/dcuid.h"
 #include "dcmtk/dcmdata/dcfilefo.h"
 #include "dcmtk/dcmsr/dsriodcc.h"
-//#include "dcmtk/dcmiod/modhelp.h"
-#include "dcmtk/dcmdata/modhelp.h"
+#include "dcmtk/dcmiod/modhelp.h"
+//#include "dcmtk/dcmdata/modhelp.h"
 
 #include "dcmtk/ofstd/oftest.h"
 
@@ -753,7 +753,6 @@ void MapFileNameToStructureCode(std::string filename, DSRCodedEntryValue& code){
     code = DSRCodedEntryValue("M-8FFFF","SRT","Neoplasm");
   } else if(filename.find("lymph") != std::string::npos){
     code = DSRCodedEntryValue("T-C4000","SRT","Lymph node");
-    //code = DSRCodedEntryValue("111300","DCM","Auxillary node with lymphoma");
   } else {
     OFLOG_FATAL(logger, "Failed to map region file name to anatomic structure!");
     throw -2;
