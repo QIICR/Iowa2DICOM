@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<executable>
+  <category>Informatics</category>
+  <title>Convert non-DICOM segmentations into DICOM SEG</title>
+  <description></description>
+  <version></version>
+  <documentation-url></documentation-url>
+  <license></license>
+  <contributor>Andrey Fedorov, BWH</contributor>
+<acknowledgements></acknowledgements>
+
+<parameters>
+    <string-vector>
+      <name>inputDICOMImageFileNames</name>
+      <label>DICOM images file names</label>
+      <channel>input</channel>
+      <longflag>dicomImageFiles</longflag>
+      <description>List of DICOM images that were used for creating the segmentation</description>
+    </string-vector>
+      
+    <string-vector>
+      <name>inputSegmentationsFileNames</name>
+      <label>Segmentation file names</label>
+      <channel>input</channel>
+      <longflag>segImageFiles</longflag>
+      <description>File names of the segmentation images</description>
+    </string-vector>
+
+    <file>
+      <name>outputSEGFileName</name>
+      <label>SEG file name</label>
+      <channel>output</channel>
+      <longflag>segDICOMFile</longflag>
+      <description>File name of the SEG object that will keep the result.</description>
+    </file>
+
+  </parameters>
+
+</executable>
