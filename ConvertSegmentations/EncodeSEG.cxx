@@ -219,8 +219,10 @@ int main(int argc, char *argv[])
       LabelType* labelObject = l2lm->GetOutput()->GetNthLabelObject(segLabelNumber);
       short label = labelObject->GetLabel();
 
-      if(!label)
+      if(!label){
+        std::cout << "Skipping label 0" << std::endl;
         continue;
+      }
 
       DcmSegment* segment = NULL;
 
@@ -238,18 +240,22 @@ int main(int argc, char *argv[])
       if ( result.good() )
       {
         result = segdoc->addSegment(segment, segmentNumber /* returns logical segment number */);
+        std::cout << "Segment " << segmentNumber << " created" << std::endl;
       }
 
       // iterate over slices for an individual label and populate output frames
       for(int sliceNumber=0;sliceNumber<inputSize[2];sliceNumber++){
 
+        // segments are numbered starting from 1
+        Uint32 frameNumber = (segmentNumber-1)*inputSize[2]+sliceNumber;
+
         // PerFrame FG: FrameContentSequence
         {
-          FGBase* existing = segFGInt.getPerFrame(sliceNumber, DcmFGTypes::EFG_FRAMECONTENT);
+          FGBase* existing = segFGInt.getPerFrame(frameNumber, DcmFGTypes::EFG_FRAMECONTENT);
           FGFrameContent *fracon = NULL;
           if(!existing){
             fracon = new FGFrameContent();
-            segFGInt.insertPerFrame(sliceNumber, fracon);
+            segFGInt.insertPerFrame(frameNumber, fracon);
           } else {
             fracon = OFstatic_cast(FGFrameContent*, existing);
           }
@@ -262,8 +268,7 @@ int main(int argc, char *argv[])
         }
 
         // PerFrame FG: PlanePositionSequence
-        {
-          Uint32 frameNumber = segmentNumber*inputSize[2]+sliceNumber;
+        {         
           FGBase* existing = segFGInt.getPerFrame(frameNumber, DcmFGTypes::EFG_PLANEPOSPATIENT);
           FGPlanePosPatient *ppos = NULL;
           if(!existing){
