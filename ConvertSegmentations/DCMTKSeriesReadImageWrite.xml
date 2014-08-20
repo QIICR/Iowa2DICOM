@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<executable>
+  <category>Informatics</category>
+  <title>Convert DICOM SEG into NRRD</title>
+  <description></description>
+  <version></version>
+  <documentation-url></documentation-url>
+  <license></license>
+  <contributor>Andrey Fedorov, BWH</contributor>
+<acknowledgements></acknowledgements>
+
+<parameters>
+    <string-vector>
+      <name>inputFileNames</name>
+      <label>List of input DICOM files</label>
+      <channel>input</channel>
+      <longflag>inputFiles</longflag>
+      <description>File name of the SEG object.</description>
+    </string-vector>
+
+    <file>
+      <name>outputNRRDFileName</name>
+      <label>NRRD file name</label>
+      <channel>input</channel>
+      <longflag>outputFile</longflag>
+      <description>File name of the NRRD object.</description>
+    </file>
+
+  </parameters>
+
+</executable>
