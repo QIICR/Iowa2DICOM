@@ -29,6 +29,9 @@
 #include "itkDCMTKImageIO.h"
 #include "itkDCMTKSeriesFileNames.h"
 
+#include "itkGDCMImageIO.h"
+#include "itkGDCMSeriesFileNames.h"
+
 #include "DCMTKSeriesReadImageWriteCLP.h"
 
 int main( int argc, char* argv[] )
@@ -43,11 +46,19 @@ int main( int argc, char* argv[] )
 
   typedef itk::Image<unsigned short,3>            ImageType;
   typedef itk::ImageSeriesReader< ImageType >     ReaderType;
-  typedef itk::DCMTKImageIO                       ImageIOType;
-  typedef itk::DCMTKSeriesFileNames               SeriesFileNames;
 
-  ImageIOType::Pointer dcmtkIO = ImageIOType::New();
-  SeriesFileNames::Pointer it = SeriesFileNames::New();
+  typedef itk::DCMTKImageIO                       DCMTKImageIOType;
+  typedef itk::DCMTKSeriesFileNames               DCMTKSeriesFileNames;
+
+  typedef itk::GDCMImageIO                       GDCMImageIOType;
+  typedef itk::GDCMSeriesFileNames               GDCMSeriesFileNames;
+
+  DCMTKImageIOType::Pointer dcmtkIO = DCMTKImageIOType::New();
+  GDCMImageIOType::Pointer gdcmIO = GDCMImageIOType::New();
+  DCMTKSeriesFileNames::Pointer it = DCMTKSeriesFileNames::New();
+
+  typedef itk::ImageFileWriter< ImageType > WriterType;
+  WriterType::Pointer writer = WriterType::New();
 
   it->SetInputDirectory( argv[1] );
 
@@ -64,37 +75,23 @@ int main( int argc, char* argv[] )
     }
 
   reader->SetFileNames( filenames );
+
   reader->SetImageIO( dcmtkIO );
 
-  try
-    {
-    reader->Update();
-    }
-  catch (itk::ExceptionObject &excp)
-    {
-    std::cerr << "Exception thrown while writing the image" << std::endl;
-    std::cerr << excp << std::endl;
+  reader->Update();
 
-    return EXIT_FAILURE;
-    }
-
-  typedef itk::ImageFileWriter< ImageType > WriterType;
-  WriterType::Pointer writer = WriterType::New();
-
-  writer->SetFileName( argv[2] );
+  writer->SetFileName( "dcmtk.nrrd" );
   writer->SetInput( reader->GetOutput() );
 
-  try
-    {
-    writer->Update();
-    }
-  catch (itk::ExceptionObject &excp)
-    {
-    std::cerr << "Exception thrown while writing the image" << std::endl;
-    std::cerr << excp << std::endl;
+  writer->Update();
 
-    return EXIT_FAILURE;
-    }
-    
+  reader->SetImageIO(gdcmIO);
+  reader->Update();
+
+  writer->SetFileName( "gdcm.nrrd" );
+  writer->SetInput( reader->GetOutput() );
+
+  writer->Update();
+
   return EXIT_SUCCESS;
 }
