@@ -33,6 +33,7 @@
 #include <itkImageFileWriter.h>
 #include <itkLabelImageToLabelMapFilter.h>
 #include <itkImageRegionConstIterator.h>
+#include <itkChangeInformationImageFilter.h>
 
 // CLP inclides
 #include "SEG2NRRDCLP.h"
@@ -115,55 +116,7 @@ int main(int argc, char *argv[])
     }
   }
 
-  // Size: Rows/Columns can be read directly from the respective attributes
-  // For number of slices, consider that all segments must have the same number of frames.
-  //   If we have FoR UID initialized, this means every segment should also have Plane
-  //   Position (Patient) initialized. So we can get the number of slices by looking
-  //   how many per-frame functional groups a segment has.
-
-  std::map<double, vnl_vector<double> > sliceOriginPoints;
-  std::vector<double> originDistances;
-  for(int i=0;;i++){
-
-    FGPlanePosPatient *planposfg = OFstatic_cast(FGPlanePosPatient*,
-                                                    fgInterface.getPerFrame(i, DcmFGTypes::EFG_PLANEPOSPATIENT));
-    if(!planposfg){
-        break;
-    }
-    std::cout << "Found plane position for frame " << i << std::endl;
-
-    vnl_vector<double> sOrigin;
-    sOrigin.set_size(3);
-    for(int j=0;j<3;j++){
-      OFString planposStr;
-      if(planposfg->getImagePositionPatient(planposStr, j).good()){
-        sOrigin[j] = atof(planposStr.c_str());
-      } else {
-        std::cerr << "Failed to read patient position" << std::endl;
-      }
-    }
-
-    if(i==0)
-      sliceOriginPoints[0] = sOrigin;
-    else {
-      double dist = distanceBwPoints(sOrigin, sliceOriginPoints[0]);
-      sliceOriginPoints[dist] = sOrigin;
-      std::cout << dist << " - " << sOrigin << std::endl;
-      originDistances.push_back(distanceBwPoints(sOrigin, sliceOriginPoints[0]));
-    }
-  }
-
-  std::sort(originDistances.begin(), originDistances.end());
-
-  origin[0] = sliceOriginPoints[originDistances[0]][0];
-  origin[1] = sliceOriginPoints[originDistances[0]][1];
-  origin[2] = sliceOriginPoints[originDistances[0]][2];
-
-  std::cout << "Origin: " << origin << std::endl;
-  imageSize[2] = sliceOriginPoints.size();
-  imageRegion.SetSize(imageSize);
-  segImage->SetRegions(imageRegion);
-  segImage->SetOrigin(origin);
+  ImageType::DirectionType dir;
 
   {
     // For directions, we can only handle segments that have patient orientation
@@ -179,24 +132,77 @@ int main(int argc, char *argv[])
     for(int i=0;i<3;i++){
       if(planorfg->getImageOrientationPatient(orientStr, i).good()){
         dirX[i] = atof(orientStr.c_str());
+      } else {
+        std::cerr << "Failed to get orientation " << i << std::endl;
       }
     }
     for(int i=3;i<6;i++){
       if(planorfg->getImageOrientationPatient(orientStr, i).good()){
-        dirY[i] = atof(orientStr.c_str());
+        dirY[i-3] = atof(orientStr.c_str());
+      } else {
+        std::cerr << "Failed to get orientation " << i << std::endl;
       }
     }
     dirZ = vnl_cross_3d(dirX, dirY);
+    dirZ.normalize();
 
-    ImageType::DirectionType dir;
     for(int i=0;i<3;i++){
       dir[0][i] = dirX[i];
       dir[1][i] = dirY[i];
       dir[2][i] = dirZ[i];
     }
-
-    segImage->SetDirection(dir);
   }
+
+  // Size: Rows/Columns can be read directly from the respective attributes
+  // For number of slices, consider that all segments must have the same number of frames.
+  //   If we have FoR UID initialized, this means every segment should also have Plane
+  //   Position (Patient) initialized. So we can get the number of slices by looking
+  //   how many per-frame functional groups a segment has.
+
+  std::map<double, vnl_vector<double> > sliceOriginPoints;
+  std::vector<double> originDistances;
+  for(int i=0;;i++){
+
+    FGPlanePosPatient *planposfg = OFstatic_cast(FGPlanePosPatient*,
+                                                    fgInterface.getPerFrame(i, DcmFGTypes::EFG_PLANEPOSPATIENT));
+    if(!planposfg){
+        break;
+    }
+    //std::cout << "Found plane position for frame " << i << std::endl;
+
+    vnl_vector<double> sOrigin;
+    sOrigin.set_size(3);
+    for(int j=0;j<3;j++){
+      OFString planposStr;
+      if(planposfg->getImagePositionPatient(planposStr, j).good()){
+        sOrigin[j] = atof(planposStr.c_str());
+      } else {
+        std::cerr << "Failed to read patient position" << std::endl;
+      }
+    }
+
+    if(i==0)
+      sliceOriginPoints[0] = sOrigin;
+    else {
+      double dist = dot_product(dirZ,sOrigin);
+      std::cout << dist << std::endl;
+      sliceOriginPoints[dist] = sOrigin;
+      originDistances.push_back(dist);
+    }
+  }
+
+  std::sort(originDistances.begin(), originDistances.end());
+
+  origin[0] = sliceOriginPoints[originDistances[0]][0];
+  origin[1] = sliceOriginPoints[originDistances[0]][1];
+  origin[2] = sliceOriginPoints[originDistances[0]][2];
+
+  std::cout << "Origin: " << origin << std::endl;
+  imageSize[2] = sliceOriginPoints.size();
+  imageRegion.SetSize(imageSize);
+  segImage->SetRegions(imageRegion);
+  segImage->SetOrigin(origin);
+
 
   FGPixelMeasures *pixm = OFstatic_cast(FGPixelMeasures*,
                                                       fgInterface.getShared(DcmFGTypes::EFG_PIXELMEASURES));
@@ -211,9 +217,8 @@ int main(int argc, char *argv[])
   pixm->getPixelSpacing(spacingStr, 1);
   spacing[1] = atof(spacingStr.c_str());
   spacing[2] = fabs(originDistances[0]-originDistances[1]);
-  std::cout << "Spacing: " << spacing << std::endl;
-  segImage->SetSpacing(spacing);
 
+  std::cout << "Spacing: " << spacing << std::endl;
 
   segImage->Allocate();
   segImage->FillBuffer(0);
@@ -240,11 +245,21 @@ int main(int argc, char *argv[])
 
   // TODO: segment->getFrameData() is missing?
 
+  typedef itk::ChangeInformationImageFilter<ImageType> ChangeInfoFilter;
+  ChangeInfoFilter::Pointer changeInfo = ChangeInfoFilter::New();
+  changeInfo->SetInput(segImage);
+  changeInfo->SetOutputSpacing(spacing);
+  changeInfo->SetOutputDirection(dir);
+  changeInfo->ChangeSpacingOn();
+  changeInfo->ChangeDirectionOn();
+
   typedef itk::ImageFileWriter<ImageType> WriterType;
   WriterType::Pointer writer = WriterType::New();
   writer->SetFileName(outputNRRDFileName);
-  writer->SetInput(segImage);
+  writer->SetInput(changeInfo->GetOutput());
   writer->Update();
+
+  std::cout << "Input spacing: " << spacing << " Output spacing: " << changeInfo->GetOutput()->GetSpacing() << std::endl;
 
   return 0;
 }
