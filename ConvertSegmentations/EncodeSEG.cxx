@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
   ImageType::SizeType inputSize = labelImage->GetBufferedRegion().GetSize();
   std::cout << "Input image size: " << inputSize << std::endl;
 
-  unsigned frameSize = inputSize[0]*inputSize[1]/8;
+  unsigned frameSize = inputSize[0]*inputSize[1];
 
   OFLog::configure(OFLogger::DEBUG_LOG_LEVEL);
   
@@ -152,6 +152,7 @@ int main(int argc, char *argv[])
     }
   }
 
+  OFString imageOrientationPatientStr;
   // Shared FGs: PlaneOrientationPatientSequence
   {
     FGBase* existing = segFGInt.getShared(DcmFGTypes::EFG_PLANEORIENTPATIENT);
@@ -166,7 +167,8 @@ int main(int argc, char *argv[])
         std::ostringstream orientationSStream;
         orientationSStream << labelDirMatrix[0][0] << "\\" << labelDirMatrix[1][0] << "\\" << labelDirMatrix[2][0] << "\\"
                            << labelDirMatrix[0][1] << "\\" << labelDirMatrix[1][1] << "\\" << labelDirMatrix[2][1];
-        cond = planor->setImageOrientationPatient(orientationSStream.str().c_str());
+        imageOrientationPatientStr = orientationSStream.str().c_str();
+        cond = planor->setImageOrientationPatient(imageOrientationPatientStr);
       }
       if(cond.good())
         std::cout << "Plane orientation inserted and initialzied" << std::endl;
@@ -249,10 +251,12 @@ int main(int argc, char *argv[])
         // segments are numbered starting from 1
         Uint32 frameNumber = (segmentNumber-1)*inputSize[2]+sliceNumber;
 
+        OFString imagePositionPatientStr;
+        FGFrameContent* fracon = NULL;
+
         // PerFrame FG: FrameContentSequence
         {
           FGBase* existing = segFGInt.getPerFrame(frameNumber, DcmFGTypes::EFG_FRAMECONTENT);
-          FGFrameContent *fracon = NULL;
           if(!existing){
             fracon = new FGFrameContent();
             segFGInt.insertPerFrame(frameNumber, fracon);
@@ -269,15 +273,6 @@ int main(int argc, char *argv[])
 
         // PerFrame FG: PlanePositionSequence
         {         
-          FGBase* existing = segFGInt.getPerFrame(frameNumber, DcmFGTypes::EFG_PLANEPOSPATIENT);
-          FGPlanePosPatient *ppos = NULL;
-          if(!existing){
-            ppos = new FGPlanePosPatient();
-            segFGInt.insertPerFrame(frameNumber, ppos);
-          } else {
-            ppos = OFstatic_cast(FGPlanePosPatient*, existing);
-          }
-
           ImageType::PointType sliceOriginPoint;
           ImageType::IndexType sliceOriginIndex;
           sliceOriginIndex.Fill(0);
@@ -285,7 +280,9 @@ int main(int argc, char *argv[])
           labelImage->TransformIndexToPhysicalPoint(sliceOriginIndex, sliceOriginPoint);
           std::ostringstream pppSStream;
           pppSStream << sliceOriginPoint[0] << "\\" << sliceOriginPoint[1] << "\\" << sliceOriginPoint[2];
-          ppos->setPlanePositionPatient(pppSStream.str().c_str(), OFTrue);
+          imagePositionPatientStr = OFString(pppSStream.str().c_str());
+
+          //ppos->setImagePositionPatient(pppSStream.str().c_str(), OFTrue);
         }
 
         /* Add frame that references this segment */
@@ -307,14 +304,15 @@ int main(int argc, char *argv[])
           sliceRegion.SetSize(sliceSize);
 
           unsigned framePixelCnt = 0;
-          bzero(frameData, frameSize*sizeof(Uint8));
           itk::ImageRegionConstIterator<ImageType> sliceIterator(labelImage, sliceRegion);
           for(sliceIterator.GoToBegin();!sliceIterator.IsAtEnd();++sliceIterator,++framePixelCnt){
-            PixelType pixelValue = sliceIterator.Get();
-            unsigned int byte = framePixelCnt/8, bit = framePixelCnt%8;
-            frameData[byte] |= (pixelValue == segLabelNumber ? 1:0) << bit;
+            frameData[framePixelCnt] = sliceIterator.Get();
           }
-          result = segdoc->addFrame(frameData, segmentNumber);
+          OFVector<ImageSOPInstanceReferenceMacro> derivationImages;
+          // derivation images list is optional
+          derivationImages.clear();
+          result = segdoc->addFrame(frameData, segmentNumber, imagePositionPatientStr,
+                                    "", *fracon, derivationImages);
         }
         if ( result.bad() )
         {

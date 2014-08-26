@@ -185,7 +185,6 @@ int main(int argc, char *argv[])
       sliceOriginPoints[0] = sOrigin;
     else {
       double dist = dot_product(dirZ,sOrigin);
-      std::cout << dist << std::endl;
       sliceOriginPoints[dist] = sOrigin;
       originDistances.push_back(dist);
     }
