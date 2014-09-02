@@ -97,6 +97,8 @@ int main(int argc, char *argv[])
     CERR << "Could not create Segmentation document: " << result.text() << OFendl;
   }
 
+  std::cout << "Binary segmentation created!" << std::endl;
+
   /* Import patient and study from existing file */
   result = segdoc->importPatientStudyFoR(inputDICOMImageFileNames[0].c_str(), OFTrue, OFTrue, OFFalse, OFTrue);
   if ( result.bad() )
@@ -306,13 +308,17 @@ int main(int argc, char *argv[])
           unsigned framePixelCnt = 0;
           itk::ImageRegionConstIterator<ImageType> sliceIterator(labelImage, sliceRegion);
           for(sliceIterator.GoToBegin();!sliceIterator.IsAtEnd();++sliceIterator,++framePixelCnt){
-            frameData[framePixelCnt] = sliceIterator.Get();
+            if(sliceIterator.Get() == label)
+              frameData[framePixelCnt] = 1;
+            else
+              frameData[framePixelCnt] = 0;
           }
           OFVector<ImageSOPInstanceReferenceMacro> derivationImages;
           // derivation images list is optional
           derivationImages.clear();
+          // FIXME: ImageOrientationPatient will be added per frame!
           result = segdoc->addFrame(frameData, segmentNumber, imagePositionPatientStr,
-                                    "", *fracon, derivationImages);
+                                    imageOrientationPatientStr, *fracon, derivationImages);
         }
         if ( result.bad() )
         {
@@ -326,6 +332,8 @@ int main(int argc, char *argv[])
 
   /* Store to disk */
   COUT << "Saving the result to " << outputSEGFileName << OFendl;
+  //segdoc->saveFile(outputSEGFileName.c_str(), EXS_LittleEndianExplicit);
+
   if(segdoc->writeDataset(segdocDataset).good()){
     std::cout << "Wrote dataset" << std::endl;
   }
