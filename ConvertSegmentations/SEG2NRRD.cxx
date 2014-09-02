@@ -161,10 +161,15 @@ int main(int argc, char *argv[])
 
   std::map<double, vnl_vector<double> > sliceOriginPoints;
   std::vector<double> originDistances;
-  for(int i=0;;i++){
+  std::map<OFString, unsigned> IPPs;
 
-    FGPlanePosPatient *planposfg = OFstatic_cast(FGPlanePosPatient*,
-                                                    fgInterface.getPerFrame(i, DcmFGTypes::EFG_PLANEPOSPATIENT));
+  unsigned numFrames = 0, numSegments = 0;
+
+  for(int frameId=0;;frameId++,numFrames++){
+
+    FGPlanePosPatient *planposfg =
+        OFstatic_cast(FGPlanePosPatient*,fgInterface.getPerFrame(frameId, DcmFGTypes::EFG_PLANEPOSPATIENT));
+
     if(!planposfg){
         break;
     }
@@ -175,7 +180,12 @@ int main(int argc, char *argv[])
     for(int j=0;j<3;j++){
       OFString planposStr;
       if(planposfg->getImagePositionPatient(planposStr, j).good()){
-        sOrigin[j] = atof(planposStr.c_str());
+        if(IPPs.find(planposStr) == IPPs.end()){
+          IPPs[planposStr] = 1;
+          sOrigin[j] = atof(planposStr.c_str());
+        } else {
+          IPPs[planposStr]++;
+        }
       } else {
         std::cerr << "Failed to read patient position" << std::endl;
       }
@@ -184,7 +194,12 @@ int main(int argc, char *argv[])
     double dist = dot_product(dirZ,sOrigin);
     sliceOriginPoints[dist] = sOrigin;
     originDistances.push_back(dist);
-  }
+  }   
+
+  numSegments = IPPs[IPPs.begin()->first];
+
+  std::cout << "Total frames: " << numFrames << std::endl;
+  std::cout << "Total frames with unique IPP: " << numSegments << std::endl;
 
   std::sort(originDistances.begin(), originDistances.end());
 
@@ -248,21 +263,30 @@ int main(int argc, char *argv[])
   changeInfo->ChangeSpacingOn();
   changeInfo->ChangeDirectionOn();
 
-  for(int frameId=0;;frameId++){
-    const DcmSegmentation::Frame *frame = segdoc->getFrame(frameId);
-    if(frame == NULL)
-      break;
-    for(int row=0;row<imageSize[1];row++){
-      for(int col=0;col<imageSize[0];col++){
-        ImageType::PixelType pixel;
-        unsigned bitCnt = row*imageSize[0]+col;
-        pixel = (frame->pixData[bitCnt/8] >> (bitCnt%8)) & 1;
+  segImage->FillBuffer(0);
 
-        ImageType::IndexType index;
-        index[0] = col;
-        index[1] = row;
-        index[2] = frameId;
-        segImage->SetPixel(index, pixel);
+  for(int segmentId=0;segmentId<numSegments;segmentId++){
+    for(int frameId=0;frameId<numFrames/numSegments;frameId++){
+      const DcmSegmentation::Frame *frame = segdoc->getFrame(segmentId*(numFrames/numSegments)+frameId);
+      if(frame == NULL)
+        break;
+      for(int row=0;row<imageSize[1];row++){
+        for(int col=0;col<imageSize[0];col++){
+          ImageType::PixelType pixel;
+          unsigned bitCnt = row*imageSize[0]+col;
+          pixel = (frame->pixData[bitCnt/8] >> (bitCnt%8)) & 1;
+          if(pixel!=0){
+            pixel = pixel+segmentId;
+            std::cout << segmentId << " " << pixel << std::endl;
+
+            ImageType::IndexType index;
+            index[0] = col;
+            index[1] = row;
+            index[2] = frameId;
+            segImage->SetPixel(index, pixel);
+            std::cout << index << std::endl;
+          }
+        }
       }
     }
   }
