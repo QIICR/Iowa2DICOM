@@ -181,13 +181,9 @@ int main(int argc, char *argv[])
       }
     }
 
-    if(i==0)
-      sliceOriginPoints[0] = sOrigin;
-    else {
-      double dist = dot_product(dirZ,sOrigin);
-      sliceOriginPoints[dist] = sOrigin;
-      originDistances.push_back(dist);
-    }
+    double dist = dot_product(dirZ,sOrigin);
+    sliceOriginPoints[dist] = sOrigin;
+    originDistances.push_back(dist);
   }
 
   std::sort(originDistances.begin(), originDistances.end());
@@ -251,6 +247,25 @@ int main(int argc, char *argv[])
   changeInfo->SetOutputDirection(dir);
   changeInfo->ChangeSpacingOn();
   changeInfo->ChangeDirectionOn();
+
+  for(int frameId=0;;frameId++){
+    const DcmSegmentation::Frame *frame = segdoc->getFrame(frameId);
+    if(frame == NULL)
+      break;
+    for(int row=0;row<imageSize[1];row++){
+      for(int col=0;col<imageSize[0];col++){
+        ImageType::PixelType pixel;
+        unsigned bitCnt = row*imageSize[0]+col;
+        pixel = (frame->pixData[bitCnt/8] >> (bitCnt%8)) & 1;
+
+        ImageType::IndexType index;
+        index[0] = col;
+        index[1] = row;
+        index[2] = frameId;
+        segImage->SetPixel(index, pixel);
+      }
+    }
+  }
 
   typedef itk::ImageFileWriter<ImageType> WriterType;
   WriterType::Pointer writer = WriterType::New();
