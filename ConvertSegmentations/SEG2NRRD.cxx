@@ -52,6 +52,8 @@ double distanceBwPoints(vnl_vector<double> from, vnl_vector<double> to){
   return sqrt((from[0]-to[0])*(from[0]-to[0])+(from[1]-to[1])*(from[1]-to[1])+(from[2]-to[2])*(from[2]-to[2]));
 }
 
+//bool getFrameIPP(unsigned frameId, vnl_vector<double> frameIPP);
+
 int main(int argc, char *argv[])
 {
   PARSE_ARGS;
@@ -95,7 +97,9 @@ int main(int argc, char *argv[])
   DcmSegment *segment = segdoc->getSegment(1);
   FGInterface &fgInterface = segdoc->getFunctionalGroups();
 
-  vnl_vector<double> dirX, dirY, dirZ;
+  vnl_vector<double> dirX(3), dirY(3), dirZ(3);
+  vnl_vector<double> rowDirection(3), colDirection(3), sliceDirection(3);
+
   dirX.set_size(3);
   dirY.set_size(3);
   dirZ.set_size(3);
@@ -122,8 +126,9 @@ int main(int argc, char *argv[])
     // For directions, we can only handle segments that have patient orientation
     //  identical for all frames, so either find it in shared FG, or fail
     // TODO: handle the situation when FoR is not initialized
+    OFBool isPerFrame;
     FGPlaneOrientationPatient *planorfg = OFstatic_cast(FGPlaneOrientationPatient*,
-                                                        fgInterface.getShared(DcmFGTypes::EFG_PLANEORIENTPATIENT));
+                                                        fgInterface.get(0, DcmFGTypes::EFG_PLANEORIENTPATIENT, isPerFrame));
     if(!planorfg){
       std::cerr << "Plane Orientation (Patient) is missing, cannot parse input " << std::endl;
       return -1;
@@ -143,13 +148,19 @@ int main(int argc, char *argv[])
         std::cerr << "Failed to get orientation " << i << std::endl;
       }
     }
-    dirZ = vnl_cross_3d(dirX, dirY);
-    dirZ.normalize();
+    sliceDirection = vnl_cross_3d(dirX, dirY);
+    sliceDirection.normalize();
+
+    colDirection = dirY;
+
+    rowDirection = vnl_cross_3d(colDirection, sliceDirection).normalize();
+
+    colDirection.normalize();
 
     for(int i=0;i<3;i++){
-      dir[0][i] = dirX[i];
-      dir[1][i] = dirY[i];
-      dir[2][i] = dirZ[i];
+      dir[0][i] = rowDirection[i];
+      dir[1][i] = colDirection[i];
+      dir[2][i] = sliceDirection[i];
     }
   }
 
@@ -166,9 +177,9 @@ int main(int argc, char *argv[])
   unsigned numFrames = 0, numSegments = 0;
 
   for(int frameId=0;;frameId++,numFrames++){
-
+    OFBool isPerFrame;
     FGPlanePosPatient *planposfg =
-        OFstatic_cast(FGPlanePosPatient*,fgInterface.getPerFrame(frameId, DcmFGTypes::EFG_PLANEPOSPATIENT));
+        OFstatic_cast(FGPlanePosPatient*,fgInterface.get(frameId, DcmFGTypes::EFG_PLANEPOSPATIENT, isPerFrame));
 
     if(!planposfg){
         break;
@@ -176,30 +187,41 @@ int main(int argc, char *argv[])
     //std::cout << "Found plane position for frame " << i << std::endl;
 
     vnl_vector<double> sOrigin;
+    OFString sOriginStr = "";
     sOrigin.set_size(3);
     for(int j=0;j<3;j++){
       OFString planposStr;
       if(planposfg->getImagePositionPatient(planposStr, j).good()){
-        if(IPPs.find(planposStr) == IPPs.end()){
-          IPPs[planposStr] = 1;
           sOrigin[j] = atof(planposStr.c_str());
-        } else {
-          IPPs[planposStr]++;
-        }
+          sOriginStr += planposStr;
+          if(j<2)
+            sOriginStr+='/';
       } else {
         std::cerr << "Failed to read patient position" << std::endl;
       }
     }
 
-    double dist = dot_product(dirZ,sOrigin);
-    sliceOriginPoints[dist] = sOrigin;
-    originDistances.push_back(dist);
-  }   
+    if(IPPs.find(sOriginStr) == IPPs.end()){
+      IPPs[sOriginStr] = 1;
+      double dist = dot_product(sliceDirection,sOrigin);
+      sliceOriginPoints[dist] = sOrigin;
+      originDistances.push_back(dist);
+    } else {
+      IPPs[sOriginStr]++;
+    }
+  }
 
-  numSegments = IPPs[IPPs.begin()->first];
+  float dist0 = fabs(originDistances[0]-originDistances[1]);
+  for(int i=1;i<originDistances.size();i++){
+    float dist1 = fabs(originDistances[i-1]-originDistances[i]);
+    float delta = dist0-dist1;
+    if(delta > 0.001){
+      std::cerr << "Inter-slice distance " << originDistances[i] << " difference exceeded threshold: " << delta << std::endl;
+    }
+  }
 
   std::cout << "Total frames: " << numFrames << std::endl;
-  std::cout << "Total frames with unique IPP: " << numSegments << std::endl;
+  std::cout << "Total frames with unique IPP: " << originDistances.size() << std::endl;
 
   std::sort(originDistances.begin(), originDistances.end());
 
@@ -214,8 +236,9 @@ int main(int argc, char *argv[])
   segImage->SetOrigin(origin);
 
 
+  OFBool isPerFrame;
   FGPixelMeasures *pixm = OFstatic_cast(FGPixelMeasures*,
-                                                      fgInterface.getShared(DcmFGTypes::EFG_PIXELMEASURES));
+                                                      fgInterface.get(0, DcmFGTypes::EFG_PIXELMEASURES, isPerFrame));
   if(!pixm){
     std::cerr << "Pixel spacing is missing, cannot parse input " << std::endl;
     return -1;
@@ -265,6 +288,12 @@ int main(int argc, char *argv[])
 
   segImage->FillBuffer(0);
 
+  for(int frameId=0;frameId<numFrames;frameId++){
+    FGPlanePosPatient *planposfg =
+        OFstatic_cast(FGPlanePosPatient*,fgInterface.get(frameId, DcmFGTypes::EFG_PLANEPOSPATIENT, isPerFrame));
+
+  }
+
   for(int segmentId=0;segmentId<numSegments;segmentId++){
     for(int frameId=0;frameId<numFrames/numSegments;frameId++){
       const DcmSegmentation::Frame *frame = segdoc->getFrame(segmentId*(numFrames/numSegments)+frameId);
@@ -277,14 +306,11 @@ int main(int argc, char *argv[])
           pixel = (frame->pixData[bitCnt/8] >> (bitCnt%8)) & 1;
           if(pixel!=0){
             pixel = pixel+segmentId;
-            std::cout << segmentId << " " << pixel << std::endl;
-
             ImageType::IndexType index;
             index[0] = col;
             index[1] = row;
             index[2] = frameId;
             segImage->SetPixel(index, pixel);
-            std::cout << index << std::endl;
           }
         }
       }

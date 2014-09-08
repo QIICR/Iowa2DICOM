@@ -45,6 +45,10 @@ static OFLogger dcemfinfLogger = OFLog::getLogger("qiicr.apps.iowa1");
         } \
     } while (0)
 
+double distanceBwPoints(vnl_vector<double> from, vnl_vector<double> to){
+  return sqrt((from[0]-to[0])*(from[0]-to[0])+(from[1]-to[1])*(from[1]-to[1])+(from[2]-to[2])*(from[2]-to[2]));
+}
+
 int main(int argc, char *argv[])
 {
   PARSE_ARGS;
@@ -125,7 +129,7 @@ int main(int argc, char *argv[])
 
   // DerivationImageSequence and Common Instance Reference module: optional, since
   // we have FrameOfReferenceUID, and will specify PixelMeasures, PlanePosition and PlaneOrientation
-  if(0){
+#if 0
     FGBase* existing = segFGInt.getShared(DcmFGTypes::EFG_DERIVATIONIMAGE);
     FGDerivationImage *derimg = NULL;
     OFCondition cond;
@@ -152,57 +156,48 @@ int main(int argc, char *argv[])
     } else {
       std::cout << "Derivation image already exists" << std::endl;
     }
-  }
+  #endif
 
   OFString imageOrientationPatientStr;
   // Shared FGs: PlaneOrientationPatientSequence
   {
-    FGBase* existing = segFGInt.getShared(DcmFGTypes::EFG_PLANEORIENTPATIENT);
-    FGPlaneOrientationPatient *planor = NULL;
     OFCondition cond;
 
-    if(!existing){
-      planor = new FGPlaneOrientationPatient();
-      cond = segFGInt.insertShared(planor, OFTrue);
-      if(cond.good()){
-        ImageType::DirectionType labelDirMatrix = labelImage->GetDirection();
-        std::ostringstream orientationSStream;
-        orientationSStream << labelDirMatrix[0][0] << "\\" << labelDirMatrix[1][0] << "\\" << labelDirMatrix[2][0] << "\\"
-                           << labelDirMatrix[0][1] << "\\" << labelDirMatrix[1][1] << "\\" << labelDirMatrix[2][1];
-        imageOrientationPatientStr = orientationSStream.str().c_str();
-        cond = planor->setImageOrientationPatient(imageOrientationPatientStr);
-      }
-      if(cond.good())
-        std::cout << "Plane orientation inserted and initialzied" << std::endl;
-    } else {
-      std::cout << "Plane orientation already exists" << std::endl;
-    }
+    ImageType::DirectionType labelDirMatrix = labelImage->GetDirection();
+    std::ostringstream orientationSStream;
+    orientationSStream << labelDirMatrix[0][0] << "\\" << labelDirMatrix[1][0] << "\\" << labelDirMatrix[2][0] << "\\"
+                       << labelDirMatrix[0][1] << "\\" << labelDirMatrix[1][1] << "\\" << labelDirMatrix[2][1];
+    imageOrientationPatientStr = orientationSStream.str().c_str();
 
+    FGPlaneOrientationPatient *planor =
+        FGPlaneOrientationPatient::createMinimal(imageOrientationPatientStr);
+    cond = planor->setImageOrientationPatient(imageOrientationPatientStr);
+    if(cond.good())
+      std::cout << "Plane orientation inserted and initialzied" << std::endl;
+    cond = segdoc->addForAllFrames(*planor);
   }
 
   // Shared FGs: PixelMeasuresSequence
   {
-    FGBase* existing = segFGInt.getShared(DcmFGTypes::EFG_PIXELMEASURES);
-    FGPixelMeasures *pixmsr = NULL;
     OFCondition cond;
 
-    if(!existing){
-      pixmsr = new FGPixelMeasures();
-      cond = segFGInt.insertShared(pixmsr, OFTrue);
-      if(cond.good()){
-        ImageType::SpacingType labelSpacing = labelImage->GetSpacing();
-        std::ostringstream spacingSStream;
-        spacingSStream << labelSpacing[0] << "\\" << labelSpacing[1];
-        cond = pixmsr->setPixelSpacing(spacingSStream.str().c_str());
-        std::ostringstream sliceThicknessSStream;
-        sliceThicknessSStream << labelSpacing[2];
-        cond = pixmsr->setSliceThickness(sliceThicknessSStream.str().c_str());
-      }
-      if(cond.good()){
-        std::cout << "Pixel measures inserted and initialized" << std::endl;
-      }
-    }
+    FGPixelMeasures *pixmsr = new FGPixelMeasures();
+
+    ImageType::SpacingType labelSpacing = labelImage->GetSpacing();
+    std::ostringstream spacingSStream;
+    spacingSStream << labelSpacing[0] << "\\" << labelSpacing[1];
+    pixmsr->setPixelSpacing(spacingSStream.str().c_str());
+    std::ostringstream sliceThicknessSStream;
+    sliceThicknessSStream << labelSpacing[2];
+    pixmsr->setSliceThickness(sliceThicknessSStream.str().c_str());
+    segdoc->addForAllFrames(*pixmsr);
   }
+
+  FGPlanePosPatient* fgppp = FGPlanePosPatient::createMinimal("1\\1\\1");
+  FGFrameContent* fgfc = new FGFrameContent();
+  OFVector<FGBase*> perFrameFGs;
+  perFrameFGs.push_back(fgppp);
+  perFrameFGs.push_back(fgfc);
 
   // Iterate over the files and labels available in each file, create a segment for each label,
   //  initialize segment frames and add to the document
@@ -247,31 +242,21 @@ int main(int argc, char *argv[])
         std::cout << "Segment " << segmentNumber << " created" << std::endl;
       }
 
-      // iterate over slices for an individual label and populate output frames
+      // iterate over slices for an individual label and populate output frames      
       for(int sliceNumber=0;sliceNumber<inputSize[2];sliceNumber++){
 
         // segments are numbered starting from 1
         Uint32 frameNumber = (segmentNumber-1)*inputSize[2]+sliceNumber;
 
         OFString imagePositionPatientStr;
-        FGFrameContent* fracon = NULL;
 
         // PerFrame FG: FrameContentSequence
-        {
-          FGBase* existing = segFGInt.getPerFrame(frameNumber, DcmFGTypes::EFG_FRAMECONTENT);
-          if(!existing){
-            fracon = new FGFrameContent();
-            segFGInt.insertPerFrame(frameNumber, fracon);
-          } else {
-            fracon = OFstatic_cast(FGFrameContent*, existing);
-          }
-          //fracon->setStackID("1"); // all frames go into the same stack (?)
-          fracon->setDimensionIndexValues(segmentNumber, 0);
-          fracon->setDimensionIndexValues(sliceNumber+1, 1);
-          //std::ostringstream inStackPosSStream; // StackID is not present/needed
-          //inStackPosSStream << s+1;
-          //fracon->setInStackPositionNumber(s+1);
-        }
+        //fracon->setStackID("1"); // all frames go into the same stack (?)
+        fgfc->setDimensionIndexValues(segmentNumber, 0);
+        fgfc->setDimensionIndexValues(sliceNumber+1, 1);
+        //std::ostringstream inStackPosSStream; // StackID is not present/needed
+        //inStackPosSStream << s+1;
+        //fracon->setInStackPositionNumber(s+1);
 
         // PerFrame FG: PlanePositionSequence
         {         
@@ -281,10 +266,16 @@ int main(int argc, char *argv[])
           sliceOriginIndex[2] = sliceNumber;
           labelImage->TransformIndexToPhysicalPoint(sliceOriginIndex, sliceOriginPoint);
           std::ostringstream pppSStream;
+          if(sliceNumber>0){
+            ImageType::PointType prevOrigin;
+            ImageType::IndexType prevIndex;
+            prevIndex.Fill(0);
+            prevIndex[2] = sliceNumber-1;
+            labelImage->TransformIndexToPhysicalPoint(prevIndex, prevOrigin);
+          }
           pppSStream << sliceOriginPoint[0] << "\\" << sliceOriginPoint[1] << "\\" << sliceOriginPoint[2];
           imagePositionPatientStr = OFString(pppSStream.str().c_str());
-
-          //ppos->setImagePositionPatient(pppSStream.str().c_str(), OFTrue);
+          fgppp->setImagePositionPatient(imagePositionPatientStr);
         }
 
         /* Add frame that references this segment */
@@ -317,8 +308,7 @@ int main(int argc, char *argv[])
           // derivation images list is optional
           derivationImages.clear();
           // FIXME: ImageOrientationPatient will be added per frame!
-          result = segdoc->addFrame(frameData, segmentNumber, imagePositionPatientStr,
-                                    imageOrientationPatientStr, *fracon, derivationImages);
+          result = segdoc->addFrame(frameData, segmentNumber, perFrameFGs);
         }
         if ( result.bad() )
         {
