@@ -165,7 +165,8 @@ int main(int argc, char *argv[])
 
     ImageType::DirectionType labelDirMatrix = labelImage->GetDirection();
     std::ostringstream orientationSStream;
-    orientationSStream << labelDirMatrix[0][0] << "\\" << labelDirMatrix[1][0] << "\\" << labelDirMatrix[2][0] << "\\"
+    orientationSStream << std::scientific
+                       << labelDirMatrix[0][0] << "\\" << labelDirMatrix[1][0] << "\\" << labelDirMatrix[2][0] << "\\"
                        << labelDirMatrix[0][1] << "\\" << labelDirMatrix[1][1] << "\\" << labelDirMatrix[2][1];
     imageOrientationPatientStr = orientationSStream.str().c_str();
 
@@ -273,7 +274,7 @@ int main(int argc, char *argv[])
             prevIndex[2] = sliceNumber-1;
             labelImage->TransformIndexToPhysicalPoint(prevIndex, prevOrigin);
           }
-          pppSStream << sliceOriginPoint[0] << "\\" << sliceOriginPoint[1] << "\\" << sliceOriginPoint[2];
+          pppSStream << std::scientific << sliceOriginPoint[0] << "\\" << sliceOriginPoint[1] << "\\" << sliceOriginPoint[2];
           imagePositionPatientStr = OFString(pppSStream.str().c_str());
           fgppp->setImagePositionPatient(imagePositionPatientStr);
         }
