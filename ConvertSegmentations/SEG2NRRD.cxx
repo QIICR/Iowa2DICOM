@@ -241,6 +241,7 @@ int main(int argc, char *argv[])
     }
   }
 
+  float zDim = fabs(originDistances[0]-originDistances[originDistances.size()-1]);
   unsigned overlappingFramesCnt = 0;
   for(std::map<OFString, unsigned>::const_iterator it=frame2overlap.begin();
       it!=frame2overlap.end();++it){
@@ -255,12 +256,6 @@ int main(int argc, char *argv[])
   std::sort(originDistances.begin(), originDistances.end());  
 
   std::cout << "Origin: " << imageOrigin << std::endl;
-  imageSize[2] = originDistances.size();
-
-  // Initialize the image
-  imageRegion.SetSize(imageSize);
-  segImage->SetRegions(imageRegion);
-  segImage->SetOrigin(imageOrigin);
 
   OFBool isPerFrame;
   FGPixelMeasures *pixm = OFstatic_cast(FGPixelMeasures*,
@@ -275,9 +270,29 @@ int main(int argc, char *argv[])
   spacing[0] = atof(spacingStr.c_str());
   pixm->getPixelSpacing(spacingStr, 1);
   spacing[1] = atof(spacingStr.c_str());
-  spacing[2] = fabs(originDistances[0]-originDistances[1]);
+  pixm->getSliceThickness(spacingStr, 0);
+  spacing[2] = atof(spacingStr.c_str());
+
+  {
+    double derivedSpacing = fabs(originDistances[0]-originDistances[1]);
+    double eps = 0.0001;
+    if(fabs(spacing[2]-derivedSpacing)>eps){
+      std::cerr << "WARNING: PixelMeasures FG SliceThickness difference of "
+                   << fabs(spacing[2]-derivedSpacing) << " exceeds threshold of "
+                   << eps << std::endl;
+    }
+  }
 
   std::cout << "Spacing: " << spacing << std::endl;
+
+  imageSize[2] = zDim/spacing[2]+1;
+
+  // Initialize the image
+  imageRegion.SetSize(imageSize);
+  segImage->SetRegions(imageRegion);
+  segImage->SetOrigin(imageOrigin);
+  segImage->SetSpacing(spacing);
+  segImage->SetDirection(dir);
 
   segImage->Allocate();
   segImage->FillBuffer(0);
@@ -300,14 +315,6 @@ int main(int argc, char *argv[])
   //  2) multiple stacks
   //      * use FrameContentSequence > StackId and InStackPositionNumber in conjunction
   //         with ImagePositionPatient and ReferencedSegmentNumber
-
-  typedef itk::ChangeInformationImageFilter<ImageType> ChangeInfoFilter;
-  ChangeInfoFilter::Pointer changeInfo = ChangeInfoFilter::New();
-  changeInfo->SetInput(segImage);
-  changeInfo->SetOutputSpacing(spacing);
-  changeInfo->SetOutputDirection(dir);
-  changeInfo->ChangeSpacingOn();
-  changeInfo->ChangeDirectionOn();
 
   segImage->FillBuffer(0);
 
@@ -343,23 +350,23 @@ int main(int argc, char *argv[])
 
     // get string representation of the frame origin
     OFString sOriginStr;
+    ImageType::PointType frameOriginPoint;
+    ImageType::IndexType frameOriginIndex;
     for(int j=0;j<3;j++){
       OFString planposStr;
       if(planposfg->getImagePositionPatient(planposStr, j).good()){
-          sOriginStr += planposStr;
-          if(j<2)
-            sOriginStr+='/';
+        frameOriginPoint[j] = atof(planposStr.c_str());
       }
     }
 
-    // map to the slice number
-    double dist = originStr2distance[sOriginStr];
-    std::vector<double>::const_iterator distIter = std::find(originDistances.begin(),originDistances.end(), dist);
-    if(distIter == originDistances.end()){
-      std::cerr << "Error: slice location not found!" << std::endl;
+    if(!segImage->TransformPhysicalPointToIndex(frameOriginPoint, frameOriginIndex)){
+      std::cerr << "ERROR: Frame " << frameId << " origin " << frameOriginPoint <<
+                   " is outside image geometry!" << frameOriginIndex << std::endl;
+      std::cerr << segImage << std::endl;
       abort();
     }
-    unsigned slice = distIter-originDistances.begin();
+
+    unsigned slice = frameOriginIndex[2];
 
     // initialize slice with the frame content
     for(int row=0;row<imageSize[1];row++){
@@ -382,14 +389,14 @@ int main(int argc, char *argv[])
     }
   }
 
-  std::cout << "Number of pixels for segments: ";
-  for(unsigned i=0;i<segmentPixelCnt.size();i++)
+  std::cout << "Number of pixels for segments: " << std::endl;
+  for(unsigned i=1;i<segmentPixelCnt.size();i++)
     std::cout << i << ":" << segmentPixelCnt[i] << std::endl;
 
   typedef itk::ImageFileWriter<ImageType> WriterType;
   WriterType::Pointer writer = WriterType::New();
   writer->SetFileName(outputNRRDFileName);
-  writer->SetInput(changeInfo->GetOutput());
+  writer->SetInput(segImage);
   writer->Update();
 
   return 0;
