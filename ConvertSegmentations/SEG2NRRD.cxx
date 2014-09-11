@@ -333,6 +333,9 @@ int main(int argc, char *argv[])
       std::cerr << "Failed to get seg number!";
       abort();
     }
+
+    // WARNING: this is needed only for David's example, which numbers
+    // (incorrectly!) segments starting from 0, should start from 1
     segmentId = segmentId+1;
 
     if(segmentId>segmentPixelCnt.size())
