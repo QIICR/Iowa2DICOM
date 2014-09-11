@@ -14,6 +14,7 @@
 #include "dcmtk/dcmfg/fgpixmsr.h"
 #include "dcmtk/dcmfg/fgfracon.h"
 #include "dcmtk/dcmfg/fgplanpo.h"
+#include "dcmtk/dcmfg/fgseg.h"
 
 #include "dcmtk/oflog/loglevel.h"
 
@@ -51,8 +52,6 @@ static OFLogger dcemfinfLogger = OFLog::getLogger("qiicr.apps.iowa1");
 double distanceBwPoints(vnl_vector<double> from, vnl_vector<double> to){
   return sqrt((from[0]-to[0])*(from[0]-to[0])+(from[1]-to[1])*(from[1]-to[1])+(from[2]-to[2])*(from[2]-to[2]));
 }
-
-//bool getFrameIPP(unsigned frameId, vnl_vector<double> frameIPP);
 
 int main(int argc, char *argv[])
 {
@@ -97,14 +96,10 @@ int main(int argc, char *argv[])
   DcmSegment *segment = segdoc->getSegment(1);
   FGInterface &fgInterface = segdoc->getFunctionalGroups();
 
-  vnl_vector<double> dirX(3), dirY(3), dirZ(3);
+  vnl_vector<double> dirX(3), dirY(3);
   vnl_vector<double> rowDirection(3), colDirection(3), sliceDirection(3);
 
-  dirX.set_size(3);
-  dirY.set_size(3);
-  dirZ.set_size(3);
-
-  ImageType::PointType origin;
+  ImageType::PointType imageOrigin;
   ImageType::RegionType imageRegion;
   ImageType::SizeType imageSize;
   ImageType::SpacingType spacing;
@@ -120,8 +115,8 @@ int main(int argc, char *argv[])
     }
   }
 
+  // Orientation
   ImageType::DirectionType dir;
-
   {
     // For directions, we can only handle segments that have patient orientation
     //  identical for all frames, so either find it in shared FG, or fail
@@ -152,10 +147,10 @@ int main(int argc, char *argv[])
     sliceDirection.normalize();
 
     colDirection = dirY;
+    rowDirection = dirX;
+    //rowDirection = vnl_cross_3d(colDirection, sliceDirection).normalize();
 
-    rowDirection = vnl_cross_3d(colDirection, sliceDirection).normalize();
-
-    colDirection.normalize();
+    //colDirection.normalize();
 
     for(int i=0;i<3;i++){
       dir[0][i] = rowDirection[i];
@@ -164,18 +159,22 @@ int main(int argc, char *argv[])
     }
   }
 
-  // Size: Rows/Columns can be read directly from the respective attributes
+  // Size
+  // Rows/Columns can be read directly from the respective attributes
   // For number of slices, consider that all segments must have the same number of frames.
   //   If we have FoR UID initialized, this means every segment should also have Plane
   //   Position (Patient) initialized. So we can get the number of slices by looking
   //   how many per-frame functional groups a segment has.
 
-  std::map<double, vnl_vector<double> > sliceOriginPoints;
   std::vector<double> originDistances;
-  std::map<OFString, unsigned> IPPs;
+  std::map<OFString, double> originStr2distance;
+  std::map<OFString, unsigned> frame2overlap;
+  double minDistance;
 
   unsigned numFrames = 0, numSegments = 0;
 
+  // Determine ordering of the frames, keep mapping from ImagePositionPatient string
+  //   to the distance, and keep track (just out of curiousity) how many frames overlap
   for(int frameId=0;;frameId++,numFrames++){
     OFBool isPerFrame;
     FGPlanePosPatient *planposfg =
@@ -184,7 +183,6 @@ int main(int argc, char *argv[])
     if(!planposfg){
         break;
     }
-    //std::cout << "Found plane position for frame " << i << std::endl;
 
     vnl_vector<double> sOrigin;
     OFString sOriginStr = "";
@@ -201,15 +199,38 @@ int main(int argc, char *argv[])
       }
     }
 
-    if(IPPs.find(sOriginStr) == IPPs.end()){
-      IPPs[sOriginStr] = 1;
+    if(originStr2distance.find(sOriginStr) == originStr2distance.end()){
       double dist = dot_product(sliceDirection,sOrigin);
-      sliceOriginPoints[dist] = sOrigin;
+      frame2overlap[sOriginStr] = 1;
+      originStr2distance[sOriginStr] = dist;
       originDistances.push_back(dist);
+      if(frameId==0){
+        minDistance = dist;
+        imageOrigin[0] = sOrigin[0];
+        imageOrigin[1] = sOrigin[1];
+        imageOrigin[2] = sOrigin[2];
+      }
+      else
+        if(dist<minDistance){
+          imageOrigin[0] = sOrigin[0];
+          imageOrigin[1] = sOrigin[1];
+          imageOrigin[2] = sOrigin[2];
+          minDistance = dist;
+        }
     } else {
-      IPPs[sOriginStr]++;
+      frame2overlap[sOriginStr]++;
     }
+    if(originStr2distance.find(sOriginStr) == originStr2distance.end())
+      abort();
   }
+
+  // sort all unique distances, this will be used to check consistency of
+  //  slice spacing, and also to locate the slice position from ImagePositionPatient
+  //  later when we read the segments
+  // TODO: it seems like frames within the segment may not need to be consecutive,
+  //  so inconsistent slice gap may not indicate a problem, but SliceThickness is not
+  //  mandatory in the PixelMeasuresSequence. Need to discuss with David.
+  sort(originDistances.begin(), originDistances.end());
 
   float dist0 = fabs(originDistances[0]-originDistances[1]);
   for(int i=1;i<originDistances.size();i++){
@@ -220,21 +241,26 @@ int main(int argc, char *argv[])
     }
   }
 
+  unsigned overlappingFramesCnt = 0;
+  for(std::map<OFString, unsigned>::const_iterator it=frame2overlap.begin();
+      it!=frame2overlap.end();++it){
+    if(it->second>1)
+      overlappingFramesCnt++;
+  }
+
   std::cout << "Total frames: " << numFrames << std::endl;
   std::cout << "Total frames with unique IPP: " << originDistances.size() << std::endl;
+  std::cout << "Total overlapping frames: " << overlappingFramesCnt << std::endl;
 
-  std::sort(originDistances.begin(), originDistances.end());
+  std::sort(originDistances.begin(), originDistances.end());  
 
-  origin[0] = sliceOriginPoints[originDistances[0]][0];
-  origin[1] = sliceOriginPoints[originDistances[0]][1];
-  origin[2] = sliceOriginPoints[originDistances[0]][2];
+  std::cout << "Origin: " << imageOrigin << std::endl;
+  imageSize[2] = originDistances.size();
 
-  std::cout << "Origin: " << origin << std::endl;
-  imageSize[2] = sliceOriginPoints.size();
+  // Initialize the image
   imageRegion.SetSize(imageSize);
   segImage->SetRegions(imageRegion);
-  segImage->SetOrigin(origin);
-
+  segImage->SetOrigin(imageOrigin);
 
   OFBool isPerFrame;
   FGPixelMeasures *pixm = OFstatic_cast(FGPixelMeasures*,
@@ -268,15 +294,12 @@ int main(int argc, char *argv[])
   // Possible scenarios (?):
   //  1) we have only one stack
   //      * StackID and InStackPositionNumber are optional, cannot rely on it
-  //      * use PatientPositionSequence>ImagePositionPatient to
-  //         find the matching slice (need to deal with numeric precision)
+  //      * use ImagePositionPatient to find the matching slice
   //      * use SegmentIdentificationSequence>ReferencedSegmentNumber to know
   //         what is the value to assign at the given pixel
   //  2) multiple stacks
   //      * use FrameContentSequence > StackId and InStackPositionNumber in conjunction
   //         with ImagePositionPatient and ReferencedSegmentNumber
-
-  // TODO: segment->getFrameData() is missing?
 
   typedef itk::ChangeInformationImageFilter<ImageType> ChangeInfoFilter;
   ChangeInfoFilter::Pointer changeInfo = ChangeInfoFilter::New();
@@ -288,42 +311,83 @@ int main(int argc, char *argv[])
 
   segImage->FillBuffer(0);
 
+  std::vector<unsigned> segmentPixelCnt;
+
   for(int frameId=0;frameId<numFrames;frameId++){
+    const DcmSegmentation::Frame *frame = segdoc->getFrame(frameId);
+
     FGPlanePosPatient *planposfg =
         OFstatic_cast(FGPlanePosPatient*,fgInterface.get(frameId, DcmFGTypes::EFG_PLANEPOSPATIENT, isPerFrame));
+    assert(planposfg);
 
-  }
+    FGFrameContent *fracon =
+        OFstatic_cast(FGFrameContent*,fgInterface.get(frameId, DcmFGTypes::EFG_FRAMECONTENT, isPerFrame));
+    assert(fracon);
 
-  for(int segmentId=0;segmentId<numSegments;segmentId++){
-    for(int frameId=0;frameId<numFrames/numSegments;frameId++){
-      const DcmSegmentation::Frame *frame = segdoc->getFrame(segmentId*(numFrames/numSegments)+frameId);
-      if(frame == NULL)
-        break;
-      for(int row=0;row<imageSize[1];row++){
-        for(int col=0;col<imageSize[0];col++){
-          ImageType::PixelType pixel;
-          unsigned bitCnt = row*imageSize[0]+col;
-          pixel = (frame->pixData[bitCnt/8] >> (bitCnt%8)) & 1;
-          if(pixel!=0){
-            pixel = pixel+segmentId;
-            ImageType::IndexType index;
-            index[0] = col;
-            index[1] = row;
-            index[2] = frameId;
-            segImage->SetPixel(index, pixel);
-          }
+    FGSegmentation *fgseg =
+        OFstatic_cast(FGSegmentation*,fgInterface.get(frameId, DcmFGTypes::EFG_SEGMENTATION, isPerFrame));
+    assert(fgseg);
+
+    Uint16 segmentId = -1;
+    if(fgseg->getReferencedSegmentNumber(segmentId).bad()){
+      std::cerr << "Failed to get seg number!";
+      abort();
+    }
+    segmentId = segmentId+1;
+
+    if(segmentId>segmentPixelCnt.size())
+      segmentPixelCnt.resize(segmentId, 0);
+
+    // get string representation of the frame origin
+    OFString sOriginStr;
+    for(int j=0;j<3;j++){
+      OFString planposStr;
+      if(planposfg->getImagePositionPatient(planposStr, j).good()){
+          sOriginStr += planposStr;
+          if(j<2)
+            sOriginStr+='/';
+      }
+    }
+
+    // map to the slice number
+    double dist = originStr2distance[sOriginStr];
+    std::vector<double>::const_iterator distIter = std::find(originDistances.begin(),originDistances.end(), dist);
+    if(distIter == originDistances.end()){
+      std::cerr << "Error: slice location not found!" << std::endl;
+      abort();
+    }
+    unsigned slice = distIter-originDistances.begin();
+
+    // initialize slice with the frame content
+    for(int row=0;row<imageSize[1];row++){
+      for(int col=0;col<imageSize[0];col++){
+        ImageType::PixelType pixel;
+        unsigned bitCnt = row*imageSize[0]+col;
+        pixel = (frame->pixData[bitCnt/8] >> (bitCnt%8)) & 1;
+        if(pixel!=0){
+          segmentPixelCnt[segmentId-1]++;
+          pixel = pixel+segmentId;
+          ImageType::IndexType index;
+          index[0] = col;
+          index[1] = row;
+          index[2] = slice;
+          if(segImage->GetPixel(index))
+            std::cout << "Warning: overwriting pixel at index " << index << std::endl;
+          segImage->SetPixel(index, pixel);
         }
       }
     }
   }
+
+  std::cout << "Number of pixels for segments: ";
+  for(unsigned i=0;i<segmentPixelCnt.size();i++)
+    std::cout << i << ":" << segmentPixelCnt[i] << std::endl;
 
   typedef itk::ImageFileWriter<ImageType> WriterType;
   WriterType::Pointer writer = WriterType::New();
   writer->SetFileName(outputNRRDFileName);
   writer->SetInput(changeInfo->GetOutput());
   writer->Update();
-
-  std::cout << "Input spacing: " << spacing << " Output spacing: " << changeInfo->GetOutput()->GetSpacing() << std::endl;
 
   return 0;
 }
