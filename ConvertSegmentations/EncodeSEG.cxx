@@ -186,10 +186,10 @@ int main(int argc, char *argv[])
 
     ImageType::SpacingType labelSpacing = labelImage->GetSpacing();
     std::ostringstream spacingSStream;
-    spacingSStream << labelSpacing[0] << "\\" << labelSpacing[1];
+    spacingSStream << std::scientific << labelSpacing[0] << "\\" << labelSpacing[1];
     pixmsr->setPixelSpacing(spacingSStream.str().c_str());
     std::ostringstream sliceThicknessSStream;
-    sliceThicknessSStream << labelSpacing[2];
+    sliceThicknessSStream << std::scientific << labelSpacing[2];
     pixmsr->setSliceThickness(sliceThicknessSStream.str().c_str());
     segdoc->addForAllFrames(*pixmsr);
   }
