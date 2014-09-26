@@ -36,6 +36,9 @@
 #include <itkImageRegionConstIterator.h>
 #include <itkChangeInformationImageFilter.h>
 
+
+#include "framesorter.h"
+
 // CLP inclides
 #include "SEG2NRRDCLP.h"
 
@@ -113,6 +116,9 @@ int main(int argc, char *argv[])
     if(segDataset->findAndGetOFString(DCM_Columns, str).good()){
       imageSize[1] = atoi(str.c_str());
     }
+    if(segDataset->findAndGetOFString(DCM_SpacingBetweenSlices, str).good()){
+      spacing[2] = atoi(str.c_str());
+    }
   }
 
   // Orientation
@@ -172,6 +178,11 @@ int main(int argc, char *argv[])
   double minDistance;
 
   unsigned numFrames = 0, numSegments = 0;
+
+  FrameSorterIPP fsIPP;
+  FrameSorterIPP::Results sortResults;
+  fsIPP.setSorterInput(&fgInterface);
+  fsIPP.sort(sortResults);
 
   // Determine ordering of the frames, keep mapping from ImagePositionPatient string
   //   to the distance, and keep track (just out of curiousity) how many frames overlap
@@ -270,8 +281,6 @@ int main(int argc, char *argv[])
   spacing[0] = atof(spacingStr.c_str());
   pixm->getPixelSpacing(spacingStr, 1);
   spacing[1] = atof(spacingStr.c_str());
-  pixm->getSliceThickness(spacingStr, 0);
-  spacing[2] = atof(spacingStr.c_str());
 
   {
     double derivedSpacing = fabs(originDistances[0]-originDistances[1]);
@@ -397,6 +406,7 @@ int main(int argc, char *argv[])
   WriterType::Pointer writer = WriterType::New();
   writer->SetFileName(outputNRRDFileName);
   writer->SetInput(segImage);
+  writer->SetUseCompression(1);
   writer->Update();
 
   return 0;
