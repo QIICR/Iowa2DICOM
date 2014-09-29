@@ -188,6 +188,9 @@ int main(int argc, char *argv[])
     std::ostringstream spacingSStream;
     spacingSStream << std::scientific << labelSpacing[0] << "\\" << labelSpacing[1];
     pixmsr->setPixelSpacing(spacingSStream.str().c_str());
+    std::ostringstream spacingBetweenSlicesSStream;
+    spacingBetweenSlicesSStream << std::scientific << labelSpacing[2];
+    pixmsr->setSpacingBetweenSlices(spacingBetweenSlicesSStream.str().c_str());
     segdoc->addForAllFrames(*pixmsr);
   }
 
@@ -327,11 +330,6 @@ int main(int argc, char *argv[])
     std::cout << "Wrote dataset" << std::endl;
   }
 
-  // add SpacingBetweenSlices
-  ImageType::SpacingType labelSpacing = labelImage->GetSpacing();
-  std::ostringstream spacingBetweenSlicesSStream;
-  spacingBetweenSlicesSStream << std::scientific << labelSpacing[2];
-  segdocDataset.putAndInsertString(DCM_SpacingBetweenSlices, spacingBetweenSlicesSStream.str().c_str());
 
   DcmFileFormat segdocFF(&segdocDataset);
   result = segdocFF.saveFile(outputSEGFileName.c_str(), EXS_LittleEndianExplicit);
