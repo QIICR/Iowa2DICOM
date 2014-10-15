@@ -15,6 +15,8 @@
 #include "dcmtk/dcmfg/fgfracon.h"
 #include "dcmtk/dcmfg/fgplanpo.h"
 
+#include "dcmtk/dcmiod/iodmacro.h"
+
 #include "dcmtk/oflog/loglevel.h"
 
 #define INCLUDE_CSTDLIB
@@ -32,18 +34,25 @@
 #include <itkLabelImageToLabelMapFilter.h>
 #include <itkImageRegionConstIterator.h>
 
+// UIDs
+#include "../Common/QIICRUIDs.h"
+//#include "../Common/conditionCheckMacros.h"
+
+// versioning
+#include "../Iowa2DICOMVersionConfigure.h"
+
 // CLP inclides
 #include "EncodeSEGCLP.h"
 
-static OFLogger dcemfinfLogger = OFLog::getLogger("qiicr.apps.iowa1");
+static OFLogger locallogger = OFLog::getLogger("qiicr.apps.iowa1");
 
 #define CHECK_COND(condition) \
-    do { \
-        if (condition.bad()) { \
-            OFLOG_FATAL(dcemfinfLogger, condition.text() << " in " __FILE__ << ":" << __LINE__ ); \
-            throw -1; \
-        } \
-    } while (0)
+      do { \
+                if (condition.bad()) { \
+                              OFLOG_FATAL(locallogger, condition.text() << " in " __FILE__ << ":" << __LINE__ ); \
+                              throw -1; \
+                          } \
+            } while (0)
 
 double distanceBwPoints(vnl_vector<double> from, vnl_vector<double> to){
   return sqrt((from[0]-to[0])*(from[0]-to[0])+(from[1]-to[1])*(from[1]-to[1])+(from[2]-to[2])*(from[2]-to[2]));
@@ -53,7 +62,7 @@ int main(int argc, char *argv[])
 {
   PARSE_ARGS;
 
-  dcemfinfLogger.setLogLevel(dcmtk::log4cplus::OFF_LOG_LEVEL);
+  //dcemfinfLogger.setLogLevel(dcmtk::log4cplus::OFF_LOG_LEVEL);
 
   typedef short PixelType;
   typedef itk::Image<PixelType,3> ImageType;
@@ -70,98 +79,78 @@ int main(int argc, char *argv[])
 
   unsigned frameSize = inputSize[0]*inputSize[1];
 
-  OFLog::configure(OFLogger::DEBUG_LOG_LEVEL);
+  //OFLog::configure(OFLogger::DEBUG_LOG_LEVEL);
   
   /* Construct Equipment information */
   IODEquipmentModule::EquipmentInfo eq;
   eq.m_Manufacturer = "QIICR";
-  eq.m_DeviceSerialNumber = "1234";
-  eq.m_ManufacturerModelName = "TEST DEVICE";
-  eq.m_SoftwareVersions = "My own alpha version";
+  eq.m_DeviceSerialNumber = "0";
+  eq.m_ManufacturerModelName = Iowa2DICOM_WC_URL;
+  eq.m_SoftwareVersions = Iowa2DICOM_WC_REVISION;
 
   /* Construct Content identification information */
   ContentIdentificationMacro ident;
-  ident.setContentCreatorName("ANDREY");
-  ident.setContentDescription("TEST SEGMENTATION CONTENT");
-  ident.setContentLabel("TEST LABEL");
-  ident.setInstanceNumber("1234");
+  CHECK_COND(ident.setContentCreatorName("QIICR"));
+  CHECK_COND(ident.setContentDescription("Iowa QIN segmentation result"));
+  CHECK_COND(ident.setContentLabel("QINIOWA"));
+  CHECK_COND(ident.setInstanceNumber("1234")); // is there a better way to initialize this?
 
   /* Create new segementation document */
   DcmDataset segdocDataset;
   DcmSegmentation *segdoc = NULL;
 
-  OFCondition result = DcmSegmentation::createBinarySegmentation(
+  CHECK_COND(DcmSegmentation::createBinarySegmentation(
     segdoc,   // resulting segmentation
     inputSize[0],      // rows
     inputSize[1],      // columns
     eq,       // equipment
-    ident);   // content identification
-  if ( result.bad() )
-  {
-    CERR << "Could not create Segmentation document: " << result.text() << OFendl;
-  }
-
-  std::cout << "Binary segmentation created!" << std::endl;
+    ident));   // content identification
 
   /* Import patient and study from existing file */
-  result = segdoc->importPatientStudyFoR(inputDICOMImageFileNames[0].c_str(), OFTrue, OFTrue, OFFalse, OFTrue);
-  if ( result.bad() )
-  {
-    CERR << "Warning: Could not import patient, study, series and/or frame of reference" << OFendl;
-    result = EC_Normal;
-  }
+  CHECK_COND(segdoc->importPatientStudyFoR(inputDICOMImageFileNames[0].c_str(), OFTrue, OFTrue, OFFalse, OFTrue));
 
   /* Series Number is part 1 and we do not take over the series, so set it
    * TODO: Invent automatically if not set by user
    */
-  segdoc->getSeries().setSeriesNumber("4711");
+  CHECK_COND(segdoc->getSeries().setSeriesNumber("4711"));
 
-
+  /* Initialize dimension module */
   char dimUID[128];
-  dcmGenerateUniqueIdentifier(dimUID, SITE_UID_ROOT);
+  dcmGenerateUniqueIdentifier(dimUID, QIICR_UID_ROOT);
   IODMultiframeDimensionModule &mfdim = segdoc->getDimensions();
-  mfdim.addDimensionIndex(DCM_SegmentNumber, dimUID, DCM_SegmentIdentificationSequence,
-                             DcmTag(DCM_SegmentNumber).getTagName());
-  mfdim.addDimensionIndex(DCM_ImagePositionPatient, dimUID, DCM_PlanePositionSequence,
-                             DcmTag(DCM_ImagePositionPatient).getTagName());
+  CHECK_COND(mfdim.addDimensionIndex(DCM_ReferencedSegmentNumber, dimUID, DCM_SegmentIdentificationSequence,
+                             DcmTag(DCM_ReferencedSegmentNumber).getTagName()));
+  CHECK_COND(mfdim.addDimensionIndex(DCM_ImagePositionPatient, dimUID, DCM_PlanePositionSequence,
+                             DcmTag(DCM_ImagePositionPatient).getTagName()));
 
+  /* Initialize shared functional groups */
   FGInterface &segFGInt = segdoc->getFunctionalGroups();
 
-  // DerivationImageSequence and Common Instance Reference module: optional, since
-  // we have FrameOfReferenceUID, and will specify PixelMeasures, PlanePosition and PlaneOrientation
-#if 0
-    FGBase* existing = segFGInt.getShared(DcmFGTypes::EFG_DERIVATIONIMAGE);
-    FGDerivationImage *derimg = NULL;
-    OFCondition cond;
-
-    if(!existing){
-      derimg = new FGDerivationImage();
-      cond = segFGInt.insertShared(derimg, OFTrue);
-      if(cond.good()){
-        DerivationImageItem *derImgItem;
-        cond = derimg->addDerivationImageItem(CodeSequenceMacro("113076","DCM","Segmentation"),"",derImgItem);
-        if(cond.good()){
-          OFVector<OFString> siVector;
-          for(int i=0;i<inputDICOMImageFileNames.size();i++){
-            siVector.push_back(OFString(inputDICOMImageFileNames[i].c_str()));
-          }
-          SourceImageItem *srcImageItem = NULL;
-          cond = derImgItem->addSourceImageItem(siVector,
-              CodeSequenceMacro("121322","DCM","Source image for image processing operation"),
-              srcImageItem);
-        }
-      }
-      if(cond.good())
-        std::cout << "Derivation image inserted and initialized" << std::endl;
-    } else {
-      std::cout << "Derivation image already exists" << std::endl;
+  // Find mapping from the segmentation slice number to the derivation image
+  // Assume that orientation of the segmentation is the same as the source series
+  std::vector<int> slice2derimg(inputDICOMImageFileNames.size());
+  for(int i=0;i<inputDICOMImageFileNames.size();i++){
+    OFString ippStr;
+    DcmFileFormat sliceFF;
+    DcmDataset *sliceDataset = NULL;
+    ImageType::PointType ippPoint;
+    ImageType::IndexType ippIndex;
+    CHECK_COND(sliceFF.loadFile(inputDICOMImageFileNames[i].c_str()));
+    sliceDataset = sliceFF.getDataset();
+    for(int j=0;j<3;j++){
+      CHECK_COND(sliceDataset->findAndGetOFString(DCM_ImagePositionPatient, ippStr, j));
+      ippPoint[j] = atof(ippStr.c_str());
     }
-  #endif
+    if(!labelImage->TransformPhysicalPointToIndex(ippPoint, ippIndex)){
+      std::cerr << "ImagePositionPatient maps outside the ITK image!" << std::endl;
+      return -1;
+    }
+    slice2derimg[ippIndex[2]] = i;
+  }
 
-  OFString imageOrientationPatientStr;
   // Shared FGs: PlaneOrientationPatientSequence
   {
-    OFCondition cond;
+    OFString imageOrientationPatientStr;
 
     ImageType::DirectionType labelDirMatrix = labelImage->GetDirection();
     std::ostringstream orientationSStream;
@@ -172,36 +161,53 @@ int main(int argc, char *argv[])
 
     FGPlaneOrientationPatient *planor =
         FGPlaneOrientationPatient::createMinimal(imageOrientationPatientStr);
-    cond = planor->setImageOrientationPatient(imageOrientationPatientStr);
-    if(cond.good())
-      std::cout << "Plane orientation inserted and initialzied" << std::endl;
-    cond = segdoc->addForAllFrames(*planor);
+    CHECK_COND(planor->setImageOrientationPatient(imageOrientationPatientStr));
+    CHECK_COND(segdoc->addForAllFrames(*planor));
   }
 
   // Shared FGs: PixelMeasuresSequence
   {
-    OFCondition cond;
-
     FGPixelMeasures *pixmsr = new FGPixelMeasures();
 
     ImageType::SpacingType labelSpacing = labelImage->GetSpacing();
     std::ostringstream spacingSStream;
     spacingSStream << std::scientific << labelSpacing[0] << "\\" << labelSpacing[1];
-    pixmsr->setPixelSpacing(spacingSStream.str().c_str());
+    CHECK_COND(pixmsr->setPixelSpacing(spacingSStream.str().c_str()));
     std::ostringstream spacingBetweenSlicesSStream;
     spacingBetweenSlicesSStream << std::scientific << labelSpacing[2];
-    pixmsr->setSpacingBetweenSlices(spacingBetweenSlicesSStream.str().c_str());
-    segdoc->addForAllFrames(*pixmsr);
+    CHECK_COND(pixmsr->setSpacingBetweenSlices(spacingBetweenSlicesSStream.str().c_str()));
+    CHECK_COND(segdoc->addForAllFrames(*pixmsr));
   }
 
   FGPlanePosPatient* fgppp = FGPlanePosPatient::createMinimal("1\\1\\1");
   FGFrameContent* fgfc = new FGFrameContent();
+  FGDerivationImage* fgder = new FGDerivationImage();
   OFVector<FGBase*> perFrameFGs;
+
   perFrameFGs.push_back(fgppp);
   perFrameFGs.push_back(fgfc);
+  perFrameFGs.push_back(fgder);
 
   // Iterate over the files and labels available in each file, create a segment for each label,
   //  initialize segment frames and add to the document
+
+  OFString seriesInstanceUID, classUID;
+  std::vector<OFString> instanceUIDs;
+
+  IODCommonInstanceReferenceModule &commref = segdoc->getCommonInstanceReference();
+  OFVector<IODSeriesAndInstanceReferenceMacro::ReferencedSeriesItem*> &refseries = commref.getReferencedSeriesItems();
+
+  IODSeriesAndInstanceReferenceMacro::ReferencedSeriesItem refseriesItem;
+  refseries.push_back(&refseriesItem);
+
+  OFVector<SOPInstanceReferenceMacro*> &refinstances = refseriesItem.getReferencedInstanceItems();
+
+  DcmFileFormat ff;
+  CHECK_COND(ff.loadFile(inputDICOMImageFileNames[slice2derimg[0]].c_str()));
+  DcmDataset *dcm = ff.getDataset();
+  CHECK_COND(dcm->findAndGetOFString(DCM_SeriesInstanceUID, seriesInstanceUID));
+  CHECK_COND(refseriesItem.setSeriesInstanceUID(seriesInstanceUID));
+
 
   Uint8 frameData[frameSize];
   for(int segFileNumber=0;segFileNumber<inputSegmentationsFileNames.size();segFileNumber++){
@@ -229,19 +235,15 @@ int main(int argc, char *argv[])
       std::stringstream segmentNameStream;
       segmentNameStream << inputSegmentationsFileNames[segFileNumber] << " label " << label;
 
-      result = DcmSegment::create(segment,
+      CHECK_COND(DcmSegment::create(segment,
                                 segmentNameStream.str().c_str(),
-                                CodeSequenceMacro("TestCode", "99DCMTK", "Test Property Type Meaning", "Test Property Type Version"),
-                                CodeSequenceMacro("TestCode", "99DCMTK", "Test Category Type Meaning", "Test Category Type Version"),
+                                CodeSequenceMacro("T-D000A", "SRT", "Anatomical Structure"),
+                                CodeSequenceMacro("T-A6000", "SRT", "Cerebellum"),
                                 DcmSegTypes::SAT_MANUAL,
-                                "My own Algorithm");
+                                ""));
 
       Uint16 segmentNumber;
-      if ( result.good() )
-      {
-        result = segdoc->addSegment(segment, segmentNumber /* returns logical segment number */);
-        std::cout << "Segment " << segmentNumber << " created" << std::endl;
-      }
+      CHECK_COND(segdoc->addSegment(segment, segmentNumber /* returns logical segment number */));
 
       // TODO: make it possible to skip empty frames (optional)
       // iterate over slices for an individual label and populate output frames      
@@ -254,8 +256,8 @@ int main(int argc, char *argv[])
 
         // PerFrame FG: FrameContentSequence
         //fracon->setStackID("1"); // all frames go into the same stack (?)
-        fgfc->setDimensionIndexValues(segmentNumber, 0);
-        fgfc->setDimensionIndexValues(sliceNumber+1, 1);
+        CHECK_COND(fgfc->setDimensionIndexValues(segmentNumber, 0));
+        CHECK_COND(fgfc->setDimensionIndexValues(sliceNumber+1, 1));
         //std::ostringstream inStackPosSStream; // StackID is not present/needed
         //inStackPosSStream << s+1;
         //fracon->setInStackPositionNumber(s+1);
@@ -281,7 +283,6 @@ int main(int argc, char *argv[])
         }
 
         /* Add frame that references this segment */
-        if ( result.good() )
         {
           ImageType::RegionType sliceRegion;
           ImageType::IndexType sliceIndex;
@@ -310,11 +311,36 @@ int main(int argc, char *argv[])
           // derivation images list is optional
           derivationImages.clear();
           // FIXME: ImageOrientationPatient will be added per frame!
-          result = segdoc->addFrame(frameData, segmentNumber, perFrameFGs);
-        }
-        if ( result.bad() )
-        {
-          CERR << "Failed to add a frame to the document: " << result.text() << OFendl;
+          fgder->clearData();
+
+          DerivationImageItem *derimgItem;
+          CHECK_COND(fgder->addDerivationImageItem(CodeSequenceMacro("113076","DCM","Segmentation"),"",derimgItem));
+          std::cout << "Num der images: " << fgder->getDerivationImageItems().size() << std::endl;
+
+          OFVector<OFString> siVector;
+          siVector.push_back(OFString(inputDICOMImageFileNames[slice2derimg[sliceNumber]].c_str()));
+          std::cout << " derivation image file name: " << inputDICOMImageFileNames[slice2derimg[sliceNumber]] << std::endl;
+          SourceImageItem* srcimgItem;
+          CHECK_COND(derimgItem->addSourceImageItem(siVector,
+              CodeSequenceMacro("121322","DCM","Source image for image processing operation"),
+              srcimgItem));
+
+          CHECK_COND(segdoc->addFrame(frameData, segmentNumber, perFrameFGs));
+          std::cout << "Added tis many derimg: " << fgder->getDerivationImageItems().size() << std::endl;
+
+          if(1){
+            // initialize class UID and series instance UID
+            ImageSOPInstanceReferenceMacro &instRef = srcimgItem->getImageSOPInstanceReference();
+            OFString instanceUID;
+            CHECK_COND(instRef.getSOPClassUID(classUID));
+            CHECK_COND(instRef.getSOPInstanceUID(instanceUID));
+            instanceUIDs.push_back(instanceUID);
+
+            SOPInstanceReferenceMacro *refinstancesItem = new SOPInstanceReferenceMacro();
+            CHECK_COND(refinstancesItem->setSOPClassUID(classUID));
+            CHECK_COND(refinstancesItem->setSOPInstanceUID(instanceUID));
+            refinstances.push_back(refinstancesItem);
+          }
         }
       }
     }
@@ -326,17 +352,11 @@ int main(int argc, char *argv[])
   COUT << "Saving the result to " << outputSEGFileName << OFendl;
   //segdoc->saveFile(outputSEGFileName.c_str(), EXS_LittleEndianExplicit);
 
-  if(segdoc->writeDataset(segdocDataset).good()){
-    std::cout << "Wrote dataset" << std::endl;
-  }
-
+  CHECK_COND(segdoc->writeDataset(segdocDataset));
 
   DcmFileFormat segdocFF(&segdocDataset);
-  result = segdocFF.saveFile(outputSEGFileName.c_str(), EXS_LittleEndianExplicit);
-  if (result.bad())
-  {
-    CERR << "Could not save segmentation document to file: " << result.text() << OFendl;
-  }
+  CHECK_COND(segdocFF.saveFile(outputSEGFileName.c_str(), EXS_LittleEndianExplicit));
+  COUT << "Saved segmentation as " << outputSEGFileName << std::endl;
 
   return 0;
 }
