@@ -116,9 +116,6 @@ int main(int argc, char *argv[])
     if(segDataset->findAndGetOFString(DCM_Columns, str).good()){
       imageSize[1] = atoi(str.c_str());
     }
-    if(segDataset->findAndGetOFString(DCM_SpacingBetweenSlices, str).good()){
-      spacing[2] = atoi(str.c_str());
-    }
   }
 
   // Orientation
@@ -238,13 +235,11 @@ int main(int argc, char *argv[])
   // sort all unique distances, this will be used to check consistency of
   //  slice spacing, and also to locate the slice position from ImagePositionPatient
   //  later when we read the segments
-  // TODO: it seems like frames within the segment may not need to be consecutive,
-  //  so inconsistent slice gap may not indicate a problem, but SliceThickness is not
-  //  mandatory in the PixelMeasuresSequence. Need to discuss with David.
   sort(originDistances.begin(), originDistances.end());
 
   float dist0 = fabs(originDistances[0]-originDistances[1]);
   for(int i=1;i<originDistances.size();i++){
+    std::cout << originDistances[i] << std::endl;
     float dist1 = fabs(originDistances[i-1]-originDistances[i]);
     float delta = dist0-dist1;
     if(delta > 0.001){
@@ -281,6 +276,8 @@ int main(int argc, char *argv[])
   spacing[0] = atof(spacingStr.c_str());
   pixm->getPixelSpacing(spacingStr, 1);
   spacing[1] = atof(spacingStr.c_str());
+  pixm->getSpacingBetweenSlices(spacingStr,0);
+  spacing[2] = atof(spacingStr.c_str());
 
   {
     double derivedSpacing = fabs(originDistances[0]-originDistances[1]);
@@ -352,7 +349,11 @@ int main(int argc, char *argv[])
 
     // WARNING: this is needed only for David's example, which numbers
     // (incorrectly!) segments starting from 0, should start from 1
-    segmentId = segmentId+1;
+    if(segmentId == 0){
+      std::cerr << "Segment numbers should start from 1!" << std::endl;
+      abort();
+    }
+    //segmentId = segmentId+1;
 
     if(segmentId>segmentPixelCnt.size())
       segmentPixelCnt.resize(segmentId, 0);
@@ -392,14 +393,14 @@ int main(int argc, char *argv[])
           index[2] = slice;
           if(segImage->GetPixel(index))
             std::cout << "Warning: overwriting pixel at index " << index << std::endl;
-          segImage->SetPixel(index, pixel);
+          segImage->SetPixel(index, pixel*segmentId);
         }
       }
     }
   }
 
   std::cout << "Number of pixels for segments: " << std::endl;
-  for(unsigned i=1;i<segmentPixelCnt.size();i++)
+  for(unsigned i=0;i<segmentPixelCnt.size();i++)
     std::cout << i << ":" << segmentPixelCnt[i] << std::endl;
 
   typedef itk::ImageFileWriter<ImageType> WriterType;
