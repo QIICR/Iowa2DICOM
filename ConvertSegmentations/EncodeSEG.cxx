@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
   //  initialize segment frames and add to the document
 
   OFString seriesInstanceUID, classUID;
-  std::vector<OFString> instanceUIDs;
+  std::set<OFString> instanceUIDs;
 
   IODCommonInstanceReferenceModule &commref = segdoc->getCommonInstanceReference();
   OFVector<IODSeriesAndInstanceReferenceMacro::ReferencedSeriesItem*> &refseries = commref.getReferencedSeriesItems();
@@ -208,18 +208,21 @@ int main(int argc, char *argv[])
   CHECK_COND(dcm->findAndGetOFString(DCM_SeriesInstanceUID, seriesInstanceUID));
   CHECK_COND(refseriesItem.setSeriesInstanceUID(seriesInstanceUID));
 
+  int uidfound = 0, uidnotfound = 0;
 
   Uint8 frameData[frameSize];
   for(int segFileNumber=0;segFileNumber<inputSegmentationsFileNames.size();segFileNumber++){
     std::cout << "Processing input label " << inputSegmentationsFileNames[segFileNumber] << std::endl;
     LabelToLabelMapFilterType::Pointer l2lm = LabelToLabelMapFilterType::New();
+    reader->SetFileName(inputSegmentationsFileNames[segFileNumber]);
+    reader->Update();
     ImageType::Pointer labelImage = reader->GetOutput();
 
     l2lm->SetInput(labelImage);
     l2lm->Update();
 
     typedef LabelToLabelMapFilterType::OutputImageType::LabelObjectType LabelType;
-    std::cout << "Found " << l2lm->GetOutput()->GetNumberOfLabelObjects() << " label(s)" << std::endl;
+    std::cout << "Found " << l2lm->GetOutput()->GetNumberOfLabelObjects() << " label(s)" << std::endl;    
 
     for(int segLabelNumber=0;segLabelNumber<l2lm->GetOutput()->GetNumberOfLabelObjects();segLabelNumber++){
       LabelType* labelObject = l2lm->GetOutput()->GetNthLabelObject(segLabelNumber);
@@ -230,17 +233,42 @@ int main(int argc, char *argv[])
         continue;
       }
 
+      std::cout << "Processing label " << label << std::endl;
+
       DcmSegment* segment = NULL;
 
       std::stringstream segmentNameStream;
       segmentNameStream << inputSegmentationsFileNames[segFileNumber] << " label " << label;
 
+      std::string segFileName = inputSegmentationsFileNames[segFileNumber];
+      CodeSequenceMacro categoryCode, typeCode;
+      if(segFileName.find("cerebellum") != std::string::npos){
+        categoryCode = CodeSequenceMacro("T-D000A", "SRT", "Anatomical Structure");
+        typeCode = CodeSequenceMacro("T-A6000", "SRT", "Cerebellum");
+      } else if(segFileName.find("aorta") != std::string::npos){
+        categoryCode = CodeSequenceMacro("T-D000A", "SRT", "Anatomical Structure");
+        typeCode = CodeSequenceMacro("T-42300", "SRT", "Aortic Arch");
+      } else if(segFileName.find("liver") != std::string::npos){
+        categoryCode = CodeSequenceMacro("T-D000A", "SRT", "Anatomical Structure");
+        typeCode = CodeSequenceMacro("T-62000", "SRT", "Liver");
+      } else if(segFileName.find("tumor") != std::string::npos){
+        if(label==1){ // tumor
+          categoryCode = CodeSequenceMacro("M-01000","SRT","Morphologically Altered Structure");
+          typeCode = CodeSequenceMacro("T-03000", "SRT", "Mass");
+        } else { // lymph node
+          categoryCode = CodeSequenceMacro("T-D000A", "SRT", "Anatomical Structure");
+          typeCode = CodeSequenceMacro("T-C4000", "SRT", "Mass");
+        }
+      } else {
+        std::cerr << "Failed to recognize structure type from the file name!" << std::endl;
+        abort();
+      }
+
       CHECK_COND(DcmSegment::create(segment,
-                                segmentNameStream.str().c_str(),
-                                CodeSequenceMacro("T-D000A", "SRT", "Anatomical Structure"),
-                                CodeSequenceMacro("T-A6000", "SRT", "Cerebellum"),
-                                DcmSegTypes::SAT_MANUAL,
-                                ""));
+                              segmentNameStream.str().c_str(),
+                              categoryCode, typeCode,
+                              DcmSegTypes::SAT_MANUAL,
+                              ""));
 
       Uint16 segmentNumber;
       CHECK_COND(segdoc->addSegment(segment, segmentNumber /* returns logical segment number */));
@@ -255,7 +283,7 @@ int main(int argc, char *argv[])
         OFString imagePositionPatientStr;
 
         // PerFrame FG: FrameContentSequence
-        //fracon->setStackID("1"); // all frames go into the same stack (?)
+        //fracon->setStackID("1"); // all frames go into the same stack
         CHECK_COND(fgfc->setDimensionIndexValues(segmentNumber, 0));
         CHECK_COND(fgfc->setDimensionIndexValues(sliceNumber+1, 1));
         //std::ostringstream inStackPosSStream; // StackID is not present/needed
@@ -315,18 +343,15 @@ int main(int argc, char *argv[])
 
           DerivationImageItem *derimgItem;
           CHECK_COND(fgder->addDerivationImageItem(CodeSequenceMacro("113076","DCM","Segmentation"),"",derimgItem));
-          std::cout << "Num der images: " << fgder->getDerivationImageItems().size() << std::endl;
 
           OFVector<OFString> siVector;
           siVector.push_back(OFString(inputDICOMImageFileNames[slice2derimg[sliceNumber]].c_str()));
-          std::cout << " derivation image file name: " << inputDICOMImageFileNames[slice2derimg[sliceNumber]] << std::endl;
           SourceImageItem* srcimgItem;
           CHECK_COND(derimgItem->addSourceImageItem(siVector,
               CodeSequenceMacro("121322","DCM","Source image for image processing operation"),
               srcimgItem));
 
           CHECK_COND(segdoc->addFrame(frameData, segmentNumber, perFrameFGs));
-          std::cout << "Added tis many derimg: " << fgder->getDerivationImageItems().size() << std::endl;
 
           if(1){
             // initialize class UID and series instance UID
@@ -334,17 +359,24 @@ int main(int argc, char *argv[])
             OFString instanceUID;
             CHECK_COND(instRef.getSOPClassUID(classUID));
             CHECK_COND(instRef.getSOPInstanceUID(instanceUID));
-            instanceUIDs.push_back(instanceUID);
 
-            SOPInstanceReferenceMacro *refinstancesItem = new SOPInstanceReferenceMacro();
-            CHECK_COND(refinstancesItem->setSOPClassUID(classUID));
-            CHECK_COND(refinstancesItem->setSOPInstanceUID(instanceUID));
-            refinstances.push_back(refinstancesItem);
+            if(instanceUIDs.find(instanceUID) == instanceUIDs.end()){
+              SOPInstanceReferenceMacro *refinstancesItem = new SOPInstanceReferenceMacro();
+              CHECK_COND(refinstancesItem->setSOPClassUID(classUID));
+              CHECK_COND(refinstancesItem->setSOPInstanceUID(instanceUID));
+              refinstances.push_back(refinstancesItem);
+              instanceUIDs.insert(instanceUID);
+              uidnotfound++;
+            } else {
+              uidfound++;
+            }
           }
         }
       }
     }
   }
+
+  std::cout << "found:" << uidfound << " not: " << uidnotfound << std::endl;
 
   COUT << "Successfully created segmentation document" << OFendl;
 
