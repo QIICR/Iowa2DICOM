@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 {
   PARSE_ARGS;
 
-  typedef short PixelType;
+  typedef unsigned short PixelType;
   typedef itk::Image<PixelType,3> ImageType;
 
   dcemfinfLogger.setLogLevel(dcmtk::log4cplus::OFF_LOG_LEVEL);
@@ -151,14 +151,11 @@ int main(int argc, char *argv[])
 
     colDirection = dirY;
     rowDirection = dirX;
-    //rowDirection = vnl_cross_3d(colDirection, sliceDirection).normalize();
 
-    //colDirection.normalize();
-
-    for(int i=0;i<3;i++){
-      dir[0][i] = rowDirection[i];
-      dir[1][i] = colDirection[i];
-      dir[2][i] = sliceDirection[i];
+    for(int i=0;i<3;i++){      
+      dir[i][0] = rowDirection[i];
+      dir[i][1] = colDirection[i];
+      dir[i][2] = sliceDirection[i];
     }
   }
 
@@ -183,6 +180,23 @@ int main(int argc, char *argv[])
 
   // Determine ordering of the frames, keep mapping from ImagePositionPatient string
   //   to the distance, and keep track (just out of curiousity) how many frames overlap
+  vnl_vector<double> refOrigin;
+  refOrigin.set_size(3);
+  {
+    OFBool isPerFrame;
+    FGPlanePosPatient *planposfg =
+        OFstatic_cast(FGPlanePosPatient*,fgInterface.get(0, DcmFGTypes::EFG_PLANEPOSPATIENT, isPerFrame));
+    for(int j=0;j<3;j++){
+      OFString planposStr;
+      if(planposfg->getImagePositionPatient(planposStr, j).good()){
+          refOrigin[j] = atof(planposStr.c_str());
+      } else {
+        std::cerr << "Failed to read patient position" << std::endl;
+      }
+    }
+  }
+
+  std::cerr << "Slice direction: " << sliceDirection << std::endl;
   for(int frameId=0;;frameId++,numFrames++){
     OFBool isPerFrame;
     FGPlanePosPatient *planposfg =
@@ -208,10 +222,17 @@ int main(int argc, char *argv[])
     }
 
     if(originStr2distance.find(sOriginStr) == originStr2distance.end()){
-      double dist = dot_product(sliceDirection,sOrigin);
+      vnl_vector<double> difference;
+      difference.set_size(3);
+      difference[0] = sOrigin[0]-refOrigin[0];
+      difference[1] = sOrigin[1]-refOrigin[1];
+      difference[2] = sOrigin[2]-refOrigin[2];
+      std::cout << "Difference: " << difference << std::endl;
+      double dist = dot_product(difference,sliceDirection);
       frame2overlap[sOriginStr] = 1;
       originStr2distance[sOriginStr] = dist;
       originDistances.push_back(dist);
+
       if(frameId==0){
         minDistance = dist;
         imageOrigin[0] = sOrigin[0];
@@ -225,11 +246,10 @@ int main(int argc, char *argv[])
           imageOrigin[2] = sOrigin[2];
           minDistance = dist;
         }
+      std::cout << "Updated origin: " << sOriginStr << " dist: " << dist << std::endl;
     } else {
       frame2overlap[sOriginStr]++;
     }
-    if(originStr2distance.find(sOriginStr) == originStr2distance.end())
-      abort();
   }
 
   // sort all unique distances, this will be used to check consistency of
@@ -276,12 +296,18 @@ int main(int argc, char *argv[])
   spacing[0] = atof(spacingStr.c_str());
   pixm->getPixelSpacing(spacingStr, 1);
   spacing[1] = atof(spacingStr.c_str());
-  pixm->getSpacingBetweenSlices(spacingStr,0);
-  spacing[2] = atof(spacingStr.c_str());
+  if(pixm->getSpacingBetweenSlices(spacingStr,0).good() && atof(spacingStr.c_str()) != 0){
+    spacing[2] = atof(spacingStr.c_str());
+    std::cout << "Spacing between slices is present: " << spacing[2] << std::endl;
+  } else {
+    spacing[2] = fabs(originDistances[0]-originDistances[1]);
+    std::cout << "Spacing between slices is missing: " << spacing[2] << std::endl;
+  }
 
   {
     double derivedSpacing = fabs(originDistances[0]-originDistances[1]);
     double eps = 0.0001;
+
     if(fabs(spacing[2]-derivedSpacing)>eps){
       std::cerr << "WARNING: PixelMeasures FG SliceThickness difference of "
                    << fabs(spacing[2]-derivedSpacing) << " exceeds threshold of "
@@ -302,6 +328,8 @@ int main(int argc, char *argv[])
 
   segImage->Allocate();
   segImage->FillBuffer(0);
+
+
 
   // TODO: sort origins, calculate slice thickness, take the origin of the first
   //   slice as the volume origin -- can we reuse the code in ITK for this?
@@ -372,9 +400,15 @@ int main(int argc, char *argv[])
     if(!segImage->TransformPhysicalPointToIndex(frameOriginPoint, frameOriginIndex)){
       std::cerr << "ERROR: Frame " << frameId << " origin " << frameOriginPoint <<
                    " is outside image geometry!" << frameOriginIndex << std::endl;
-      std::cerr << segImage << std::endl;
-      abort();
+      //std::cerr << segImage << std::endl;
+      //segImage->TransformPhysicalPointToIndex(imageOrigin, frameOriginIndex);
+      //std::cerr << "Image origin maps to " << frameOriginIndex << std::endl;
+      //return -1;
+      continue;
+    } else {
+      //std::cerr << frameOriginPoint << " ==> " << frameOriginIndex << std::endl;
     }
+
 
     unsigned slice = frameOriginIndex[2];
 
