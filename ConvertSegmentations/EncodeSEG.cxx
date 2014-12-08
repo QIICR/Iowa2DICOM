@@ -33,6 +33,8 @@
 #include <itkImageFileReader.h>
 #include <itkLabelImageToLabelMapFilter.h>
 #include <itkImageRegionConstIterator.h>
+#include <itkLabelStatisticsImageFilter.h>
+#include <itkBinaryThresholdImageFilter.h>
 
 // UIDs
 #include "../Common/QIICRUIDs.h"
@@ -219,10 +221,51 @@ int main(int argc, char *argv[])
     ImageType::Pointer labelImage = reader->GetOutput();
 
     l2lm->SetInput(labelImage);
+
     l2lm->Update();
 
     typedef LabelToLabelMapFilterType::OutputImageType::LabelObjectType LabelType;
-    std::cout << "Found " << l2lm->GetOutput()->GetNumberOfLabelObjects() << " label(s)" << std::endl;    
+    typedef itk::LabelStatisticsImageFilter<ImageType,ImageType> LabelStatisticsType;
+
+    LabelStatisticsType::Pointer labelStats = LabelStatisticsType::New();
+
+    std::cout << "Found " << l2lm->GetOutput()->GetNumberOfLabelObjects() << " label(s)" << std::endl;
+    std::cout << "Calculating label statistics ...";
+    labelStats->SetInput(reader->GetOutput());
+    labelStats->SetLabelInput(reader->GetOutput());
+    labelStats->Update();
+    std::cout << "done" << std::endl;
+
+    bool cropSegmentsBBox = false;
+    if(cropSegmentsBBox){
+      std::cout << "WARNING: Crop operation enabled - WIP" << std::endl;
+      typedef itk::BinaryThresholdImageFilter<ImageType,ImageType> ThresholdType;
+      ThresholdType::Pointer thresh = ThresholdType::New();
+      thresh->SetInput(reader->GetOutput());
+      thresh->SetLowerThreshold(1);
+      thresh->SetLowerThreshold(100);
+      thresh->SetInsideValue(1);
+      thresh->Update();
+      std::cout << "Thresh done" << std::endl;
+
+
+
+      LabelStatisticsType::Pointer threshLabelStats = LabelStatisticsType::New();
+
+      threshLabelStats->SetInput(thresh->GetOutput());
+      threshLabelStats->SetLabelInput(thresh->GetOutput());
+      threshLabelStats->Update();
+      std::cout << "STats done" << std::endl;
+
+      LabelStatisticsType::BoundingBoxType threshBbox = threshLabelStats->GetBoundingBox(1);
+      /*
+      std::cout << "OVerall bounding box: " << threshBbox[0] << ", " << threshBbox[1]
+                   << threshBbox[2] << ", " << threshBbox[3]
+                   << threshBbox[4] << ", " << threshBbox[5]
+                   << std::endl;
+                   */
+      return -1;//abort();
+    }
 
     for(int segLabelNumber=0;segLabelNumber<l2lm->GetOutput()->GetNumberOfLabelObjects();segLabelNumber++){
       LabelType* labelObject = l2lm->GetOutput()->GetNthLabelObject(segLabelNumber);
@@ -234,6 +277,16 @@ int main(int argc, char *argv[])
       }
 
       std::cout << "Processing label " << label << std::endl;
+
+      LabelStatisticsType::BoundingBoxType bbox = labelStats->GetBoundingBox(label);
+      unsigned firstSlice, lastSlice;
+      if(skipEmptySlices){
+        firstSlice = bbox[4];
+        lastSlice = bbox[5];
+      } else {
+        firstSlice = 0;
+        lastSlice = inputSize[2];
+      }
 
       DcmSegment* segment = NULL;
 
@@ -275,7 +328,7 @@ int main(int argc, char *argv[])
 
       // TODO: make it possible to skip empty frames (optional)
       // iterate over slices for an individual label and populate output frames      
-      for(int sliceNumber=0;sliceNumber<inputSize[2];sliceNumber++){
+      for(int sliceNumber=firstSlice;sliceNumber<lastSlice;sliceNumber++){
 
         // segments are numbered starting from 1
         Uint32 frameNumber = (segmentNumber-1)*inputSize[2]+sliceNumber;
@@ -306,6 +359,8 @@ int main(int argc, char *argv[])
             labelImage->TransformIndexToPhysicalPoint(prevIndex, prevOrigin);
           }
           pppSStream << std::scientific << sliceOriginPoint[0] << "\\" << sliceOriginPoint[1] << "\\" << sliceOriginPoint[2];
+          if(sliceNumber == firstSlice)
+            std::cout << "IPP for first slice: " << pppSStream.str() << std::endl;
           imagePositionPatientStr = OFString(pppSStream.str().c_str());
           fgppp->setImagePositionPatient(imagePositionPatientStr);
         }
@@ -376,7 +431,7 @@ int main(int argc, char *argv[])
     }
   }
 
-  std::cout << "found:" << uidfound << " not: " << uidnotfound << std::endl;
+  //std::cout << "found:" << uidfound << " not: " << uidnotfound << std::endl;
 
   COUT << "Successfully created segmentation document" << OFendl;
 
@@ -387,7 +442,12 @@ int main(int argc, char *argv[])
   CHECK_COND(segdoc->writeDataset(segdocDataset));
 
   DcmFileFormat segdocFF(&segdocDataset);
-  CHECK_COND(segdocFF.saveFile(outputSEGFileName.c_str(), EXS_LittleEndianExplicit));
+  if(compress){
+    CHECK_COND(segdocFF.saveFile(outputSEGFileName.c_str(), EXS_DeflatedLittleEndianExplicit));
+  } else {
+    CHECK_COND(segdocFF.saveFile(outputSEGFileName.c_str(), EXS_LittleEndianExplicit));
+  }
+
   COUT << "Saved segmentation as " << outputSEGFileName << std::endl;
 
   return 0;

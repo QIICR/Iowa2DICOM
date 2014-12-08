@@ -60,12 +60,13 @@ int main( int argc, char* argv[] )
   typedef itk::ImageFileWriter< ImageType > WriterType;
   WriterType::Pointer writer = WriterType::New();
 
-  it->SetInputDirectory( argv[1] );
+  //it->SetInputDirectory( argv[1] );
 
   ReaderType::Pointer reader = ReaderType::New();
 
   ReaderType::FileNamesContainer filenames;
   unsigned int numberOfFilenames =  inputFileNames.size();
+  std::cout << "Input file names: " << numberOfFilenames << std::endl;
   std::cout << numberOfFilenames << std::endl;
   for(unsigned int fni = 0; fni<numberOfFilenames; fni++)
     {
@@ -87,6 +88,8 @@ int main( int argc, char* argv[] )
 
   reader->SetImageIO(gdcmIO);
   reader->Update();
+
+  std::cout << "Orientation: " << reader->GetOutput()->GetDirection() << std::endl;
 
   writer->SetFileName( "gdcm.nrrd" );
   writer->SetInput( reader->GetOutput() );
