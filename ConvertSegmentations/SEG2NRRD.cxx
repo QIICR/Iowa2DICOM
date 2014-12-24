@@ -156,8 +156,8 @@ int main(int argc, char *argv[])
   // about pixels that are initialized more than once.
   std::vector<unsigned> segmentPixelCnt(100);
 
-  for(int frameId=0;frameId<fgInterface.numFrames();frameId++){
-    const DcmSegmentation::Frame *frame = segdoc->getFrame(frameId);
+  for(int frameId=0;frameId<fgInterface.getNumberOfFrames();frameId++){
+    const DcmIODTypes::Frame *frame = segdoc->getFrame(frameId);
     bool isPerFrame;
 
     FGPlanePosPatient *planposfg =
@@ -312,7 +312,7 @@ int computeVolumeExtent(FGInterface &fgInterface, vnl_vector<double> &sliceDirec
   std::map<OFString, unsigned> frame2overlap;
   double minDistance;
 
-  unsigned numFrames = fgInterface.numFrames();;
+  unsigned numFrames = fgInterface.getNumberOfFrames();
 
   FrameSorterIPP fsIPP;
   FrameSorterIPP::Results sortResults;
@@ -438,17 +438,16 @@ int getDeclaredImageSpacing(FGInterface &fgInterface, ImageType::SpacingType &sp
     return -1;
   }
 
-  OFString spacingStr;
-  pixm->getPixelSpacing(spacingStr, 0);
-  spacing[0] = atof(spacingStr.c_str());
-  pixm->getPixelSpacing(spacingStr, 1);
-  spacing[1] = atof(spacingStr.c_str());
-  if(pixm->getSpacingBetweenSlices(spacingStr,0).good() && atof(spacingStr.c_str()) != 0){
-    spacing[2] = atof(spacingStr.c_str());
-  } else if(pixm->getSliceThickness(spacingStr,0).good() && atof(spacingStr.c_str()) != 0){
+  pixm->getPixelSpacing(spacing[0], 0);
+  pixm->getPixelSpacing(spacing[1], 1);
+
+  Float64 spacingFloat;
+  if(pixm->getSpacingBetweenSlices(spacingFloat,0).good() && spacingFloat != 0){
+    spacing[2] = spacingFloat;
+  } else if(pixm->getSliceThickness(spacingFloat,0).good() && spacingFloat != 0){
     // SliceThickness can be carried forward from the source images, and may not be what we need
     // As an example, this ePAD example has 1.25 carried from CT, but true computed thickness is 1!
-    std::cerr << "WARNING: SliceThickness is present and is " << spacingStr << ". NOT using it!" << std::endl;
+    std::cerr << "WARNING: SliceThickness is present and is " << spacingFloat << ". NOT using it!" << std::endl;
   }
 
   return 0;

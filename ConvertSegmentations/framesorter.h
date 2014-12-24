@@ -148,8 +148,8 @@ public:
       return;
     }
     
-    size_t numFrames = m_fg->numFrames();
-    if (m_fg->numFrames() == 0)
+    size_t numFrames = m_fg->getNumberOfFrames();
+    if (numFrames == 0)
     {
       results.errorCode = FG_EC_NotEnoughItems;
       return;
@@ -236,7 +236,7 @@ public:
     }
 
     OFBool isPerFrame;
-    size_t numFrames = m_fg->numFrames();
+    size_t numFrames = m_fg->getNumberOfFrames();
     OrderedFrameItem* orderedFrameItems = new OrderedFrameItem[numFrames];
 
     for(int frameId=0;frameId<numFrames;frameId++)

@@ -172,12 +172,9 @@ int main(int argc, char *argv[])
     FGPixelMeasures *pixmsr = new FGPixelMeasures();
 
     ImageType::SpacingType labelSpacing = labelImage->GetSpacing();
-    std::ostringstream spacingSStream;
-    spacingSStream << std::scientific << labelSpacing[0] << "\\" << labelSpacing[1];
-    CHECK_COND(pixmsr->setPixelSpacing(spacingSStream.str().c_str()));
-    std::ostringstream spacingBetweenSlicesSStream;
-    spacingBetweenSlicesSStream << std::scientific << labelSpacing[2];
-    CHECK_COND(pixmsr->setSpacingBetweenSlices(spacingBetweenSlicesSStream.str().c_str()));
+    CHECK_COND(pixmsr->setPixelSpacing(labelSpacing[0]));
+
+    CHECK_COND(pixmsr->setSpacingBetweenSlices(labelSpacing[2]));
     CHECK_COND(segdoc->addForAllFrames(*pixmsr));
   }
 
