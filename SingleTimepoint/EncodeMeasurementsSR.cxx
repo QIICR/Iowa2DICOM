@@ -704,8 +704,8 @@ void ReadMeasurementsForStructure(std::string filename, Measurements &measuremen
       //std::cout << "  " << std::string(fLine) << std::endl;
       TokenizeString(std::string(fLine), tokens, " ");
       if(dict.find(tokens[0]) == dict.end()){
-        OFLOG_FATAL(logger, "Failed to find mapping for " << tokens[0]);
-        throw -4;
+        OFLOG_DEBUG(logger, "Failed to find mapping for " << tokens[0]);
+        continue;
       }
       m.QuantityCode = dict[tokens[0]].QuantityCode;
       m.UnitsCode = dict[tokens[0]].UnitsCode;
