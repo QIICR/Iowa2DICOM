@@ -291,35 +291,38 @@ int main(int argc, char *argv[])
 
       DcmSegment* segment = NULL;
 
-      std::stringstream segmentNameStream;
-      segmentNameStream << inputSegmentationsFileNames[segFileNumber] << " label " << label;
-
+      std::string segmentName;
       std::string segFileName = inputSegmentationsFileNames[segFileNumber];
       CodeSequenceMacro categoryCode, typeCode;
       if(segFileName.find("cerebellum") != std::string::npos){
         categoryCode = CodeSequenceMacro("T-D000A", "SRT", "Anatomical Structure");
         typeCode = CodeSequenceMacro("T-A6000", "SRT", "Cerebellum");
+        segmentName = "Cerebellum";
       } else if(segFileName.find("aorta") != std::string::npos){
         categoryCode = CodeSequenceMacro("T-D000A", "SRT", "Anatomical Structure");
         typeCode = CodeSequenceMacro("T-42300", "SRT", "Aortic Arch");
+        segmentName = "Aortic arch";
       } else if(segFileName.find("liver") != std::string::npos){
         categoryCode = CodeSequenceMacro("T-D000A", "SRT", "Anatomical Structure");
         typeCode = CodeSequenceMacro("T-62000", "SRT", "Liver");
+        segmentName = "Liver";
       } else if(segFileName.find("tumor") != std::string::npos){
         if(label==1){ // tumor
           categoryCode = CodeSequenceMacro("M-01000","SRT","Morphologically Altered Structure");
           typeCode = CodeSequenceMacro("T-03000", "SRT", "Mass");
+        segmentName = "Mass";
         } else { // lymph node
           categoryCode = CodeSequenceMacro("T-D000A", "SRT", "Anatomical Structure");
           typeCode = CodeSequenceMacro("T-C4000", "SRT", "Mass");
+          segmentName = "Lymph node";
         }
       } else {
         std::cerr << "Failed to recognize structure type from the file name!" << std::endl;
         abort();
       }
-
+      
       CHECK_COND(DcmSegment::create(segment,
-                              segmentNameStream.str().c_str(),
+                              segmentName.c_str(),
                               categoryCode, typeCode,
                               DcmSegTypes::SAT_MANUAL,
                               ""));
