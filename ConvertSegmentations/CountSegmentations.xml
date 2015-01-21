@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<executable>
+  <category>Informatics</category>
+  <title>Count the number of segmentations in an image</title>
+  <description></description>
+  <version></version>
+  <documentation-url></documentation-url>
+  <license></license>
+  <contributor>Andrey Fedorov (BWH), Ethan Ulrich (UIowa)</contributor>
+<acknowledgements></acknowledgements>
+
+<parameters>
+      
+    <string>
+      <name>inputSegmentationsFileName</name>
+      <label>Segmentation file name</label>
+      <channel>input</channel>
+      <longflag>segImageFile</longflag>
+      <description>File name of the segmentation image</description>
+    </string>
+    <integer-vector>
+      <name>outputSegmentationCount</name>
+      <label>Segmentation Labels Found</label>
+      <channel>output</channel>
+      <longflag>outputFile</longflag>
+      <description>File name of the output</description>
+    </integer-vector>
+</parameters>
+
+</executable>
