@@ -16,10 +16,11 @@ find_package(SlicerExecutionModel NO_MODULE REQUIRED GenerateCLP)
 include(${SlicerExecutionModel_USE_FILE})
 include(${SlicerExecutionModel_CMAKE_DIR}/SEMMacroBuildCLI.cmake)
 include(${SlicerExecutionModel_USE_FILE})
-include(${CMAKE_CURRENT_BINARY_DIR})
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-find_package(DCMTK REQUIRED)
+find_package(DCMTK NO_MODULE REQUIRED)
 find_package(ITK REQUIRED)
+
 
 include(${ITK_USE_FILE})
 
@@ -28,3 +29,5 @@ include_directories(${ITK_INCLUDE_DIRS})
 
 add_subdirectory(ConvertSegmentations)
 add_subdirectory(SingleTimepoint)
+
+message("include dirs: ${DCMTK_INCLUDE_DIRS}")
