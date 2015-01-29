@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
   //OFLog::configure(OFLogger::DEBUG_LOG_LEVEL);
   
   /* Construct Equipment information */
-  IODEquipmentModule::EquipmentInfo eq;
+  IODGeneralEquipmentModule::EquipmentInfo eq;
   eq.m_Manufacturer = "QIICR";
   eq.m_DeviceSerialNumber = "0";
   eq.m_ManufacturerModelName = Iowa2DICOM_WC_URL;
@@ -416,13 +416,13 @@ int main(int argc, char *argv[])
             // initialize class UID and series instance UID
             ImageSOPInstanceReferenceMacro &instRef = srcimgItem->getImageSOPInstanceReference();
             OFString instanceUID;
-            CHECK_COND(instRef.getSOPClassUID(classUID));
-            CHECK_COND(instRef.getSOPInstanceUID(instanceUID));
+            CHECK_COND(instRef.getReferencedSOPClassUID(classUID));
+            CHECK_COND(instRef.getReferencedSOPInstanceUID(instanceUID));
 
             if(instanceUIDs.find(instanceUID) == instanceUIDs.end()){
               SOPInstanceReferenceMacro *refinstancesItem = new SOPInstanceReferenceMacro();
-              CHECK_COND(refinstancesItem->setSOPClassUID(classUID));
-              CHECK_COND(refinstancesItem->setSOPInstanceUID(instanceUID));
+              CHECK_COND(refinstancesItem->setReferencedSOPClassUID(classUID));
+              CHECK_COND(refinstancesItem->setReferencedSOPInstanceUID(instanceUID));
               refinstances.push_back(refinstancesItem);
               instanceUIDs.insert(instanceUID);
               uidnotfound++;
