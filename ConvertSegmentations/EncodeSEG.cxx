@@ -488,7 +488,7 @@ int main(int argc, char *argv[])
     segdocDataset.putAndInsertString(DCM_SeriesTime, contentTime.c_str());
 
     segdocDataset.putAndInsertString(DCM_SeriesDescription, seriesDescription.c_str());
-    segdocDataset.putAndInsertString(DCM_ContentLabel, seriesDescription.c_str());
+    segdocDataset.putAndInsertString(DCM_ContentLabel, "QIICR QIN IOWA");
 
   }
 
