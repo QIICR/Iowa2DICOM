@@ -24,6 +24,7 @@
 #include "dcmtk/ofstd/ofstdinc.h"
 
 #include <sstream>
+#include <fstream>
 
 #ifdef WITH_ZLIB
 #include <zlib.h>                     /* for zlibVersion() */
@@ -38,6 +39,7 @@
 
 // UIDs
 #include "../Common/QIICRUIDs.h"
+#include "../Common/SegmentAttributes.h"
 //#include "../Common/conditionCheckMacros.h"
 
 // versioning
@@ -215,7 +217,25 @@ int main(int argc, char *argv[])
 
   Uint8 frameData[frameSize];
   for(int segFileNumber=0;segFileNumber<inputSegmentationsFileNames.size();segFileNumber++){
+
     std::cout << "Processing input label " << inputSegmentationsFileNames[segFileNumber] << std::endl;
+
+    // read meta-information for the segmentation file
+    std::map<unsigned,SegmentAttributes> label2attributes;
+    {
+      std::ifstream attrStream(inputLabelAttributesFileNames[segFileNumber].c_str());
+      while(!attrStream.eof()){
+        std::string attrString;
+        getline(attrStream,attrString);
+        std::string labelStr, attributesStr;
+        SplitString(attrString,labelStr,attributesStr,";");
+        unsigned labelId = atoi(labelStr.c_str());
+        label2attributes[labelId] = SegmentAttributes(labelId);
+        label2attributes[labelId].populateAttributesFromString(attributesStr);
+        //label2attributes[labelId].PrintSelf();
+      }
+    }
+
     LabelToLabelMapFilterType::Pointer l2lm = LabelToLabelMapFilterType::New();
     reader->SetFileName(inputSegmentationsFileNames[segFileNumber]);
     reader->Update();
@@ -231,11 +251,9 @@ int main(int argc, char *argv[])
     LabelStatisticsType::Pointer labelStats = LabelStatisticsType::New();
 
     std::cout << "Found " << l2lm->GetOutput()->GetNumberOfLabelObjects() << " label(s)" << std::endl;
-    std::cout << "Calculating label statistics ...";
     labelStats->SetInput(reader->GetOutput());
     labelStats->SetLabelInput(reader->GetOutput());
     labelStats->Update();
-    std::cout << "done" << std::endl;
 
     bool cropSegmentsBBox = false;
     if(cropSegmentsBBox){
@@ -247,16 +265,12 @@ int main(int argc, char *argv[])
       thresh->SetLowerThreshold(100);
       thresh->SetInsideValue(1);
       thresh->Update();
-      std::cout << "Thresh done" << std::endl;
-
-
 
       LabelStatisticsType::Pointer threshLabelStats = LabelStatisticsType::New();
 
       threshLabelStats->SetInput(thresh->GetOutput());
       threshLabelStats->SetLabelInput(thresh->GetOutput());
       threshLabelStats->Update();
-      std::cout << "STats done" << std::endl;
 
       LabelStatisticsType::BoundingBoxType threshBbox = threshLabelStats->GetBoundingBox(1);
       /*
@@ -294,38 +308,48 @@ int main(int argc, char *argv[])
       std::string segmentName;
       std::string segFileName = inputSegmentationsFileNames[segFileNumber];
       CodeSequenceMacro categoryCode, typeCode;
-      if(segFileName.find("cerebellum") != std::string::npos){
-        categoryCode = CodeSequenceMacro("T-D000A", "SRT", "Anatomical Structure");
-        typeCode = CodeSequenceMacro("T-A6000", "SRT", "Cerebellum");
-        segmentName = "Cerebellum";
-      } else if(segFileName.find("aorta") != std::string::npos){
-        categoryCode = CodeSequenceMacro("T-D000A", "SRT", "Anatomical Structure");
-        typeCode = CodeSequenceMacro("T-42300", "SRT", "Aortic Arch");
-        segmentName = "Aortic arch";
-      } else if(segFileName.find("liver") != std::string::npos){
-        categoryCode = CodeSequenceMacro("T-D000A", "SRT", "Anatomical Structure");
-        typeCode = CodeSequenceMacro("T-62000", "SRT", "Liver");
-        segmentName = "Liver";
-      } else if(segFileName.find("tumor") != std::string::npos){
-        if(label==1){ // tumor
-          categoryCode = CodeSequenceMacro("M-01000","SRT","Morphologically Altered Structure");
-          typeCode = CodeSequenceMacro("T-03000", "SRT", "Mass");
-        segmentName = "Mass";
-        } else { // lymph node
-          categoryCode = CodeSequenceMacro("T-D000A", "SRT", "Anatomical Structure");
-          typeCode = CodeSequenceMacro("T-C4000", "SRT", "Mass");
-          segmentName = "Lymph node";
-        }
-      } else {
-        std::cerr << "Failed to recognize structure type from the file name!" << std::endl;
-        abort();
-      }
       
+      // these are required
+      categoryCode = StringToCodeSequenceMacro(label2attributes[label].lookupAttribute("SegmentedPropertyCategory"));
+      typeCode = StringToCodeSequenceMacro(label2attributes[label].lookupAttribute("SegmentedPropertyType"));
+
+      // these ones are optional
+      std::string anatomicRegionStr = label2attributes[label].lookupAttribute("AnatomicRegion");
+      std::string anatomicRegionModifierStr = label2attributes[label].lookupAttribute("AnatomicRegionModifer");
+
+      DcmSegTypes::E_SegmentAlgoType algoType;
+      std::string algoName = "";
+      std::string algoTypeStr = label2attributes[label].lookupAttribute("SegmentAlgorithmType");
+      if(algoTypeStr == "MANUAL"){
+        algoType = DcmSegTypes::SAT_MANUAL;
+      } else {
+        if(algoTypeStr == "AUTOMATIC")
+          algoType = DcmSegTypes::SAT_AUTOMATIC;
+        if(algoTypeStr == "SEMIAUTOMATIC")
+          algoType = DcmSegTypes::SAT_SEMIAUTOMATIC;
+        algoName = label2attributes[label].lookupAttribute("SegmentAlgorithmName");
+      }
+
+      OFString segmentLabel;
+      CHECK_COND(typeCode.getCodeMeaning(segmentLabel));
       CHECK_COND(DcmSegment::create(segment,
-                              segmentName.c_str(),
+                              segmentLabel,
                               categoryCode, typeCode,
-                              DcmSegTypes::SAT_MANUAL,
-                              ""));
+                              algoType,
+                              algoName.c_str()));
+
+
+      if(anatomicRegionStr != ""){
+        GeneralAnatomyMacro &anatomyMacro = segment->getGeneralAnatomyCode();
+        CodeSequenceMacro &anatomicRegion = anatomyMacro.getAnatomicRegion();
+        OFVector<CodeSequenceMacro*>& modifiersVector = anatomyMacro.getAnatomicRegionModifier();
+
+        anatomicRegion = StringToCodeSequenceMacro(anatomicRegionStr);
+        if(anatomicRegionModifierStr != ""){
+          CodeSequenceMacro anatomicRegionModifier = StringToCodeSequenceMacro(anatomicRegionModifierStr);
+          modifiersVector.push_back(&anatomicRegionModifier);
+        }
+      }
 
       Uint16 segmentNumber;
       CHECK_COND(segdoc->addSegment(segment, segmentNumber /* returns logical segment number */));
@@ -444,6 +468,29 @@ int main(int argc, char *argv[])
   //segdoc->saveFile(outputSEGFileName.c_str(), EXS_LittleEndianExplicit);
 
   CHECK_COND(segdoc->writeDataset(segdocDataset));
+
+  // Set reader/session/timepoint information
+  CHECK_COND(segdocDataset.putAndInsertString(DCM_ContentCreatorName, readerId.c_str()));
+  CHECK_COND(segdocDataset.putAndInsertString(DCM_ClinicalTrialSeriesID, sessionId.c_str()));
+  CHECK_COND(segdocDataset.putAndInsertString(DCM_ClinicalTrialTimePointID, timePointId.c_str()));
+
+  // StudyDate/Time should be of the series segmented, not when segmentation was made - this is initialized by DCMTK
+
+  // SeriesDate/Time should be of when segmentation was done; initialize to when it was saved
+  {
+    OFString contentDate, contentTime;
+    DcmDate::getCurrentDate(contentDate);
+    DcmTime::getCurrentTime(contentTime);
+
+    segdocDataset.putAndInsertString(DCM_ContentDate, contentDate.c_str());
+    segdocDataset.putAndInsertString(DCM_ContentTime, contentTime.c_str());
+    segdocDataset.putAndInsertString(DCM_SeriesDate, contentDate.c_str());
+    segdocDataset.putAndInsertString(DCM_SeriesTime, contentTime.c_str());
+
+    segdocDataset.putAndInsertString(DCM_SeriesDescription, seriesDescription.c_str());
+    segdocDataset.putAndInsertString(DCM_ContentLabel, seriesDescription.c_str());
+
+  }
 
   DcmFileFormat segdocFF(&segdocDataset);
   if(compress){

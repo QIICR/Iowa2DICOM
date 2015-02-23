@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "../Common/QIICRUIDs.h"
+#include "../Common/SegmentAttributes.h"
 
 // DCMTK includes
 #include "dcmtk/config/osconfig.h"    /* make sure OS specific configuration is included first */
@@ -720,20 +721,6 @@ void ReadMeasurementsForStructure(std::string filename, Measurements &measuremen
  */
 void MapMeasurementsCodeToQuantityAndUnits(std::string &code, DSRCodedEntryValue &quantity, DSRCodedEntryValue &units){
   throw -3;
-}
-
-/*
- * Tokenize input string with space as a delimiter
- */
-void TokenizeString(std::string str, std::vector<std::string> &tokens, std::string delimiter){
-  // http://stackoverflow.com/questions/14265581/parse-split-a-string-in-c-using-string-delimiter-standard-c
-  size_t pos = 0;
-  while((pos = str.find(delimiter)) != std::string::npos) {
-    std::string token = str.substr(0,pos);
-    tokens.push_back(token);
-    str.erase(0, pos+delimiter.length());
-  }
-  tokens.push_back(str);
 }
 
 void MapFileNameToStructureCode(std::string filename, DSRCodedEntryValue& code){

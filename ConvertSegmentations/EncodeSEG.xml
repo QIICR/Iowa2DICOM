@@ -26,6 +26,54 @@
       <description>File names of the segmentation images</description>
     </string-vector>
 
+    <string-vector>
+      <name>inputLabelAttributesFileNames</name>
+      <label>Label attributes file names</label>
+      <channel>input</channel>
+      <longflag>labelAttributesFiles</longflag>
+      <description>File names of the text files containing anatomical codes for each of the labels for the corresponding segmentation file. Order matters and must match that of the segmentations file list! Fomat of the text file:labelId;tag1:codeTuple1;tag2:codeTuple2</description>
+    </string-vector>
+
+    <string>
+      <name>readerId</name>
+      <label>Reader Identifier</label>
+      <channel>input</channel>
+      <longflag>readerId</longflag>
+      <description>Reader identifier</description>
+    </string>
+
+    <string>
+      <name>sessionId</name>
+      <label>Session Identifier</label>
+      <channel>input</channel>
+      <longflag>sessionId</longflag>
+      <description>Session identifier</description>
+    </string>
+
+    <string>
+      <name>timePointId</name>
+      <label>Time Point Identifier</label>
+      <channel>input</channel>
+      <longflag>timepointId</longflag>
+      <description>Time point identifier</description>
+    </string>
+
+    <string>
+      <name>seriesDescription</name>
+      <label>Series description</label>
+      <channel>input</channel>
+      <longflag>seriesDescription</longflag>
+      <description>Series description</description>
+    </string>
+
+    <file>
+      <name>algorithmDescriptionFileName</name>
+      <label>Algorithm description file</label>
+      <channel>input</channel>
+      <longflag>algorithmDescriptionFile</longflag>
+      <description>File containing description of the algorithm. Format: type (MANUAL, AUTOMATIC or SEMIAUTOMATIC);SegmentSurfaceGenerationAlgorithm:codeTuple (if needed). UPDATE: this probably should be optional, as the algorithm should be specified per-segment, and thus provided using the meta-information files.</description>
+    </file>
+
     <file>
       <name>outputSEGFileName</name>
       <label>SEG file name</label>
