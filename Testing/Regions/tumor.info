@@ -1,0 +1,2 @@
+1;ContentCreatorName:Reader1;ClinicalTrialTimePointID:1;ClinicalTrialSeriesID:1;SegmentAlgorithmType:MANUAL;SegmentedPropertyCategory:M-01000,SRT,Morphologically Altered Structure;SegmentedPropertyType:M-80003,SRT,Neoplasm, Primary;AnatomicRegion:T-53131,SRT,base of tongue;
+2;ContentCreatorName:Reader1;ClinicalTrialTimePointID:1;ClinicalTrialSeriesID:1;SegmentAlgorithmType:MANUAL;SegmentedPropertyCategory:M-01000,SRT,Morphologically Altered Structure;SegmentedPropertyType:M-80006,SRT,Neoplasm, Secondary;AnatomicRegion:T-C4004,SRT,lymph node of head and neck;
