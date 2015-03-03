@@ -308,6 +308,10 @@ int main(int argc, char** argv)
   doc->setSeriesDate(contentDate.c_str());
   doc->setSeriesTime(contentTime.c_str());
 
+  // software versioning
+  datasetSR->putAndInsertString(DCM_ManufacturerModelName, Iowa2DICOM_WC_URL);
+  datasetSR->putAndInsertString(DCM_SoftwareVersions, Iowa2DICOM_WC_REVISION);
+
   AddCodingScheme(doc, "99PMP", "1.3.6.1.4.1.5962.98.1", "PixelMed Publishing");
 
   std::cout << "Before writing the dataset" << std::endl;
