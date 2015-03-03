@@ -6,6 +6,7 @@
 #include <map>
 
 #include "dcmtk/dcmiod/iodmacro.h"
+#include "dcmtk/dcmsr/dsrcodtn.h"
 
 /*
  *  * Tokenize input string with space as a delimiter
@@ -35,6 +36,13 @@ CodeSequenceMacro StringToCodeSequenceMacro(std::string str){
   SplitString(str, code, tail, ",");
   SplitString(tail, designator, meaning, ",");
   return CodeSequenceMacro(code.c_str(), designator.c_str(), meaning.c_str());
+}
+
+DSRCodedEntryValue StringToDSRCodedEntryValue(std::string str){
+  std::string tail, code, designator, meaning;
+  SplitString(str, code, tail, ",");
+  SplitString(tail, designator, meaning, ",");
+  return DSRCodedEntryValue(code.c_str(), designator.c_str(), meaning.c_str());
 }
 
 class SegmentAttributes {
