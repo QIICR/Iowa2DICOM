@@ -254,6 +254,7 @@ int main(int argc, char** argv)
 
       DSRContainerTreeNode *measurementsGroup = new DSRContainerTreeNode(DSRTypes::RT_contains);
       CHECK_COND(measurementsGroup->setConceptName(DSRCodedEntryValue("125007","DCM","Measurement Group")));
+      CHECK_COND(measurementsGroup->setTemplateIdentification("1501","DCMR"));
       CHECK_EQUAL(tree.addContentItem(measurementsGroup, DSRTypes::AM_belowCurrent), measurementsGroup);
 
       // pass segment number here as well - assign it to be the same as the
@@ -418,6 +419,7 @@ void AddPersonObserverContext(DSRDocumentTree &tree,
 void AddImageLibrary(DSRDocumentTree &tree, std::vector<DcmDataset*> &imageDatasets){
   DSRContainerTreeNode *libContainerNode = new DSRContainerTreeNode(DSRTypes::RT_contains);
   CHECK_COND(libContainerNode->setConceptName(DSRCodedEntryValue("111028", "DCM", "Image Library")));
+  CHECK_COND(libContainerNode->setTemplateIdentification("1600","DCMR"));
   CHECK_EQUAL(tree.addContentItem(libContainerNode), libContainerNode);
 
   DSRContainerTreeNode *libGroupNode = new DSRContainerTreeNode(DSRTypes::RT_contains);
