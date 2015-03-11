@@ -62,6 +62,13 @@ double distanceBwPoints(vnl_vector<double> from, vnl_vector<double> to){
   return sqrt((from[0]-to[0])*(from[0]-to[0])+(from[1]-to[1])*(from[1]-to[1])+(from[2]-to[2])*(from[2]-to[2]));
 }
 
+std::string FloatToStrScientific(float f){
+  std::ostringstream sstream;
+  sstream << std::scientific << f;
+  return sstream.str();
+}
+
+
 int main(int argc, char *argv[])
 {
   PARSE_ARGS;
@@ -157,15 +164,16 @@ int main(int argc, char *argv[])
     OFString imageOrientationPatientStr;
 
     ImageType::DirectionType labelDirMatrix = labelImage->GetDirection();
-    std::ostringstream orientationSStream;
-    orientationSStream << std::scientific
-                       << labelDirMatrix[0][0] << "\\" << labelDirMatrix[1][0] << "\\" << labelDirMatrix[2][0] << "\\"
-                       << labelDirMatrix[0][1] << "\\" << labelDirMatrix[1][1] << "\\" << labelDirMatrix[2][1];
-    imageOrientationPatientStr = orientationSStream.str().c_str();
 
     FGPlaneOrientationPatient *planor =
-        FGPlaneOrientationPatient::createMinimal(imageOrientationPatientStr);
-    CHECK_COND(planor->setImageOrientationPatient(imageOrientationPatientStr));
+        FGPlaneOrientationPatient::createMinimal(
+            FloatToStrScientific(labelDirMatrix[0][0]).c_str(),
+            FloatToStrScientific(labelDirMatrix[0][1]).c_str(),
+            FloatToStrScientific(labelDirMatrix[0][2]).c_str(),
+            FloatToStrScientific(labelDirMatrix[1][0]).c_str(),
+            FloatToStrScientific(labelDirMatrix[1][1]).c_str(),
+            FloatToStrScientific(labelDirMatrix[1][2]).c_str());
+    //CHECK_COND(planor->setImageOrientationPatient(imageOrientationPatientStr));
     CHECK_COND(segdoc->addForAllFrames(*planor));
   }
 
@@ -184,7 +192,7 @@ int main(int argc, char *argv[])
     CHECK_COND(segdoc->addForAllFrames(*pixmsr));
   }
 
-  FGPlanePosPatient* fgppp = FGPlanePosPatient::createMinimal("1\\1\\1");
+  FGPlanePosPatient* fgppp = FGPlanePosPatient::createMinimal("1","1","1");
   FGFrameContent* fgfc = new FGFrameContent();
   FGDerivationImage* fgder = new FGDerivationImage();
   OFVector<FGBase*> perFrameFGs;
@@ -386,11 +394,10 @@ int main(int argc, char *argv[])
             prevIndex[2] = sliceNumber-1;
             labelImage->TransformIndexToPhysicalPoint(prevIndex, prevOrigin);
           }
-          pppSStream << std::scientific << sliceOriginPoint[0] << "\\" << sliceOriginPoint[1] << "\\" << sliceOriginPoint[2];
-          if(sliceNumber == firstSlice)
-            std::cout << "IPP for first slice: " << pppSStream.str() << std::endl;
-          imagePositionPatientStr = OFString(pppSStream.str().c_str());
-          fgppp->setImagePositionPatient(imagePositionPatientStr);
+          fgppp->setImagePositionPatient(
+            FloatToStrScientific(sliceOriginPoint[0]).c_str(),
+            FloatToStrScientific(sliceOriginPoint[1]).c_str(),
+            FloatToStrScientific(sliceOriginPoint[2]).c_str());
         }
 
         /* Add frame that references this segment */
