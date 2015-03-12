@@ -103,7 +103,14 @@ void AddPersonObserverContext(DSRDocumentTree&,
                         const char* personObserverName);
 
 void AddImageLibrary(DSRDocumentTree&, std::vector<DcmDataset*>&);
+void AddImageLibraryEntryDescriptors(DSRDocumentTree&, DcmDataset*);
 void AddImageLibraryEntry(DSRDocumentTree&, DcmDataset*);
+
+OFCondition AddImageLibraryDescriptorFromTag(DSRDocumentTree&, DcmDataset*, const DcmTagKey, 
+    DSRTypes::E_RelationshipType,
+    DSRTypes::E_ValueType,
+    DSRTypes::E_AddMode, 
+    const DSRCodedEntryValue);
 
 void PopulateMeasurementsGroup(DSRDocumentTree&, DSRContainerTreeNode*, DSRCodedEntryValue&, Measurements&,
                                std::vector<DcmDataset*> petDatasets,
@@ -426,28 +433,56 @@ void AddImageLibrary(DSRDocumentTree &tree, std::vector<DcmDataset*> &imageDatas
   CHECK_COND(libGroupNode->setConceptName(DSRCodedEntryValue("126200", "DCM", "Image Library Group")));
   CHECK_EQUAL(tree.addContentItem(libGroupNode, DSRTypes::AM_belowCurrent), libGroupNode);
 
+  // factor out image library entry descriptors
+  AddImageLibraryEntryDescriptors(tree, imageDatasets[0]);
+
   for(int i=0;i<imageDatasets.size();i++){
     AddImageLibraryEntry(tree, imageDatasets[i]);
-    tree.gotoNode(libGroupNode->getNodeID());
   }
+  tree.goUp();
   tree.goUp();
 }
 
-void AddImageLibraryEntry(DSRDocumentTree &tree, DcmDataset *dcm){
-  {
-    DSRImageTreeNode *imageNode = new DSRImageTreeNode(DSRTypes::RT_contains);
-    OFString classUIDStr, instanceUIDStr;
-    DcmElement *classUIDElt, *instanceUIDElt;
-    CHECK_COND(dcm->findAndGetElement(DCM_SOPClassUID, classUIDElt));
-    CHECK_COND(dcm->findAndGetElement(DCM_SOPInstanceUID, instanceUIDElt));
-    classUIDElt->getOFString(classUIDStr, 0);
-    instanceUIDElt->getOFString(instanceUIDStr, 0);
-    CHECK_COND(imageNode->setReference(classUIDStr, instanceUIDStr));
-    CHECK_EQUAL(tree.addContentItem(imageNode, DSRTypes::AM_belowCurrent), imageNode);
+void AddImageLibraryDateDescriptor(DSRDocumentTree& dest, DcmDataset* src, const DcmTagKey tag, 
+    DSRTypes::E_AddMode& mode, const DSRCodedEntryValue code){
+  
+  DcmElement *element;
+  OFString elementOFString;
+
+  if(src->findAndGetElement(tag, element).good()){
+      element->getOFString(elementOFString, 0);
+      size_t nodeID = dest.addContentItem(DSRTypes::RT_hasAcqContext,
+                                                  DSRTypes::VT_Date,
+                                                  mode);
+      dest.getCurrentContentItem().setConceptName(code);
+      dest.getCurrentContentItem().setStringValue(elementOFString.c_str());
   }
+}
+
+OFCondition AddImageLibraryDescriptorFromTag(DSRDocumentTree& dest, DcmDataset* src, const DcmTagKey tag, 
+    DSRTypes::E_RelationshipType rel, DSRTypes::E_ValueType type, DSRTypes::E_AddMode mode, 
+    const DSRCodedEntryValue code){
+  DcmElement *element;
+  OFString elementOFString;
+
+  if(src->findAndGetElement(tag, element).good()){
+      element->getOFString(elementOFString, 0);
+      std::cout << "Tag as string: " << elementOFString << std::endl;
+      size_t nodeID = dest.addContentItem(rel,type,mode);
+      dest.getCurrentContentItem().setConceptName(code);
+      if(!dest.getCurrentContentItem().setStringValue(elementOFString.c_str()).good())
+        std::cout << "Failed to set value " << elementOFString << " from tag key " << tag << std::endl;
+      return EC_Normal;
+  } else {
+    std::cout << "Failed to find tag " << tag << std::endl;
+    return EC_IllegalCall;
+  }
+}
+
+void AddImageLibraryEntryDescriptors(DSRDocumentTree& tree, DcmDataset* dcm){
 
   DSRCodedEntryValue codedValue;
-  DSRTypes::E_AddMode addMode;
+  DSRTypes::E_AddMode addMode = DSRTypes::AM_belowCurrent;
   DcmItem *sequenceItem;
   DcmElement *element;
   OFString elementOFString;
@@ -462,6 +497,7 @@ void AddImageLibraryEntry(DSRDocumentTree &tree, DcmDataset *dcm){
      CHECK_COND(codeNode->setCode(codedValue.getCodeValue(), codedValue.getCodingSchemeDesignator(),
                                codedValue.getCodeMeaning()));
      CHECK_EQUAL(tree.addContentItem(codeNode, addMode), codeNode);
+     addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
   }
 
   // Image View
@@ -500,6 +536,7 @@ void AddImageLibraryEntry(DSRDocumentTree &tree, DcmDataset *dcm){
       CHECK_COND(textNode->setConceptName(DSRCodedEntryValue("111044","DCM","Patient Orientation Row")));
       CHECK_COND(textNode->setValue(elementOFString));
       CHECK_EQUAL(tree.addContentItem(textNode, addMode), textNode);
+      addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
 
       tree.getCurrentContentItem().setConceptName(
                   DSRCodedEntryValue("111044","DCM","Patient Orientation Row"));
@@ -512,285 +549,119 @@ void AddImageLibraryEntry(DSRDocumentTree &tree, DcmDataset *dcm){
       CHECK_EQUAL(tree.addContentItem(textNode, addMode), textNode);
   }
 
-#if 0
+  // Modality
+  // warning: this is fixed, since all measurements refer to PET, but should be
+  // more generic for more general case
+  DSRCodeTreeNode *modNode = new DSRCodeTreeNode(DSRTypes::RT_hasAcqContext);
+  CHECK_COND(modNode->setConceptName(DSRCodedEntryValue("121139","DCM","Modality")));
+  CHECK_COND(modNode->setCode("PT", "DCM","Positron emission tomography"));
+  CHECK_EQUAL(tree.addContentItem(modNode, DSRTypes::AM_belowCurrent), modNode);      
+  addMode = DSRTypes::AM_afterCurrent;
+
   // Study date
-  if(imgDataset->findAndGetElement(DCM_StudyDate, element).good()){
-      element->getOFString(elementOFString, 0);
-      doc->getTree().addContentItem(DSRTypes::RT_hasAcqContext,
-                                                  DSRTypes::VT_Date,
-                                                  addMode);
-      addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
-
-      doc->getTree().getCurrentContentItem().setConceptName(
-                  DSRCodedEntryValue("111060","DCM","Study Date"));
-      doc->getTree().getCurrentContentItem().setStringValue(elementOFString.c_str());
+  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_StudyDate, 
+      DSRTypes::RT_hasAcqContext, DSRTypes::VT_Date, addMode,
+      DSRCodedEntryValue("111060","DCM","Study Date")).good()){
+    addMode = DSRTypes::AM_afterCurrent;
   }
-
+  
   // Study time
-  if(imgDataset->findAndGetElement(DCM_StudyTime, element).good()){
-
-      element->getOFString(elementOFString, 0);
-      doc->getTree().addContentItem(DSRTypes::RT_hasAcqContext,
-                                    DSRTypes::VT_Time,
-                                    addMode);
-      addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
-
-      doc->getTree().getCurrentContentItem().setConceptName(
-                  DSRCodedEntryValue("111061","DCM","Study Time"));
-      doc->getTree().getCurrentContentItem().setStringValue(elementOFString.c_str());
-  }
+  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_StudyTime, 
+      DSRTypes::RT_hasAcqContext, DSRTypes::VT_Time, addMode,
+      DSRCodedEntryValue("111061","DCM","Study Time")).good()){
+    addMode = DSRTypes::AM_afterCurrent;
+  };
 
   // Content date
-  if(imgDataset->findAndGetElement(DCM_ContentDate, element).good()){
-
-      element->getOFString(elementOFString, 0);
-      doc->getTree().addContentItem(DSRTypes::RT_hasAcqContext,
-                                    DSRTypes::VT_Date,
-                                    addMode);
-      addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
-
-      doc->getTree().getCurrentContentItem().setConceptName(
-                  DSRCodedEntryValue("111018","DCM","Content Date"));
-      doc->getTree().getCurrentContentItem().setStringValue(elementOFString.c_str());
+  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_ContentDate, 
+      DSRTypes::RT_hasAcqContext, DSRTypes::VT_Date, addMode,
+      DSRCodedEntryValue("111018","DCM","Content Date")).good()){
+    addMode = DSRTypes::AM_afterCurrent;
   }
-
+  
   // Content time
-  if(imgDataset->findAndGetElement(DCM_ContentTime, element).good()){
-      element->getOFString(elementOFString, 0);
-      doc->getTree().addContentItem(DSRTypes::RT_hasAcqContext,
-                                    DSRTypes::VT_Time,
-                                    addMode);
-      addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
-
-      doc->getTree().getCurrentContentItem().setConceptName(
-                  DSRCodedEntryValue("111019","DCM","Content Time"));
-      doc->getTree().getCurrentContentItem().setStringValue(elementOFString.c_str());
+  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_ContentTime, 
+      DSRTypes::RT_hasAcqContext, DSRTypes::VT_Time, addMode,
+      DSRCodedEntryValue("111019","DCM","Content Time")).good()){
+    addMode = DSRTypes::AM_afterCurrent;
+  }
+  
+  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_AcquisitionDate, 
+      DSRTypes::RT_hasAcqContext, DSRTypes::VT_Date, addMode,
+      DSRCodedEntryValue("126201","DCM","Acquisition Date")).good()){
+    addMode = DSRTypes::AM_afterCurrent;
+  }
+  
+  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_AcquisitionTime, 
+      DSRTypes::RT_hasAcqContext, DSRTypes::VT_Time, addMode,
+      DSRCodedEntryValue("126202","DCM","Acquisition Time")).good()){
+    addMode = DSRTypes::AM_afterCurrent;
   }
 
-  // Pixel Spacing - horizontal and vertical separately
-  if(imgDataset->findAndGetElement(DCM_PixelSpacing, element).good()){
-      element->getOFString(elementOFString, 0);
-      doc->getTree().addContentItem(DSRTypes::RT_hasAcqContext,
-                                    DSRTypes::VT_Num,
-                                    addMode);
-      addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
-
-      doc->getTree().getCurrentContentItem().setConceptName(
-                  DSRCodedEntryValue("111026","DCM","Horizontal Pixel Spacing"));
-      doc->getTree().getCurrentContentItem().setNumericValue(
-                  DSRNumericMeasurementValue(elementOFString.c_str(),
-                                             DSRCodedEntryValue("mm","UCUM","millimeter")));
-
-      element->getOFString(elementOFString, 1);
-      doc->getTree().addContentItem(DSRTypes::RT_hasAcqContext,
-                                    DSRTypes::VT_Num,
-                                    DSRTypes::AM_afterCurrent);
-      doc->getTree().getCurrentContentItem().setConceptName(
-                  DSRCodedEntryValue("111066","DCM","Vertical Pixel Spacing"));
-      doc->getTree().getCurrentContentItem().setNumericValue(
-                  DSRNumericMeasurementValue(elementOFString.c_str(),
-                                             DSRCodedEntryValue("mm","UCUM","millimeter")));
+  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_FrameOfReferenceUID, 
+      DSRTypes::RT_hasAcqContext, DSRTypes::VT_UIDRef, addMode,
+      DSRCodedEntryValue("112227","DCM","Frame of Reference UID")).good()){
+    addMode = DSRTypes::AM_afterCurrent;
   }
 
-  // Positioner Primary Angle
-  if(imgDataset->findAndGetElement(DCM_PositionerPrimaryAngle, element).good()){
-
-      element->getOFString(elementOFString, 0);
-      doc->getTree().addContentItem(DSRTypes::RT_hasAcqContext,
-                                    DSRTypes::VT_Num,
-                                    addMode);
-      addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
-
-      doc->getTree().getCurrentContentItem().setConceptName(
-                  DSRCodedEntryValue("112011","DCM","Positioner Primary Angle"));
-      doc->getTree().getCurrentContentItem().setNumericValue(
-                  DSRNumericMeasurementValue(elementOFString.c_str(),
-                                             DSRCodedEntryValue("deg","UCUM","degrees of plane angle")));
-
+  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_Rows, 
+      DSRTypes::RT_hasAcqContext, DSRTypes::VT_Num, addMode,
+      DSRCodedEntryValue("110910","DCM","Pixel Data Rows")).good()){
+    addMode = DSRTypes::AM_afterCurrent;
   }
 
-  // Positioner Secondary Angle
-  if(imgDataset->findAndGetElement(DCM_PositionerSecondaryAngle, element).good()){
-
-      element->getOFString(elementOFString, 0);
-      doc->getTree().addContentItem(DSRTypes::RT_hasAcqContext,
-                                    DSRTypes::VT_Num,
-                                    addMode);
-      addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
-
-      doc->getTree().getCurrentContentItem().setConceptName(
-                  DSRCodedEntryValue("112012","DCM","Positioner Secondary Angle"));
-      doc->getTree().getCurrentContentItem().setNumericValue(
-                  DSRNumericMeasurementValue(elementOFString.c_str(),
-                                             DSRCodedEntryValue("deg","UCUM","degrees of plane angle")));
+  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_Columns, 
+      DSRTypes::RT_hasAcqContext, DSRTypes::VT_Num, addMode,
+      DSRCodedEntryValue("110911","DCM","Pixel Data Columns")).good()){
+    addMode = DSRTypes::AM_afterCurrent;
   }
 
-  // TODO
-  // Spacing between slices: May be computed from the Image Position (Patient) (0020,0032)
-  // projected onto the normal to the Image Orientation (Patient) (0020,0037) if present;
-  // may or may not be the same as the Spacing Between Slices (0018,0088) if present.
-
-  // Slice thickness/
-  if(imgDataset->findAndGetElement(DCM_SliceThickness, element).good()){
-
+  if(dcm->findAndGetElement(DCM_Rows, element).good()){
       element->getOFString(elementOFString, 0);
-      doc->getTree().addContentItem(DSRTypes::RT_hasAcqContext,
+      tree.addContentItem(DSRTypes::RT_hasAcqContext,
                                     DSRTypes::VT_Num,
                                     addMode);
       addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
 
-      doc->getTree().getCurrentContentItem().setConceptName(
-                  DSRCodedEntryValue("112225","DCM","Slice Thickness"));
-      doc->getTree().getCurrentContentItem().setNumericValue(
-                  DSRNumericMeasurementValue(elementOFString.c_str(),
-                                             DSRCodedEntryValue("mm","UCUM","millimeter")));
-  }
-
-  // Frame of reference
-  if(imgDataset->findAndGetElement(DCM_FrameOfReferenceUID, element).good()){
-
-      element->getOFString(elementOFString,0);
-      doc->getTree().addContentItem(DSRTypes::RT_hasAcqContext,
-                                    DSRTypes::VT_UIDRef,
-                                    addMode);
-      addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
-
-      doc->getTree().getCurrentContentItem().setConceptName(
-                  DSRCodedEntryValue("112227","DCM","Frame of Reference UID"));
-      doc->getTree().getCurrentContentItem().setStringValue(elementOFString);
-  }
-
-  // Image Position Patient
-  if(imgDataset->findAndGetElement(DCM_ImagePositionPatient, element).good()){
-      element->getOFString(elementOFString, 0);
-      doc->getTree().addContentItem(DSRTypes::RT_hasAcqContext,
-                                    DSRTypes::VT_Num,
-                                    addMode);
-      addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
-
-      doc->getTree().getCurrentContentItem().setConceptName(
-                  DSRCodedEntryValue("110901","DCM","Image Position (Patient) X"));
-      doc->getTree().getCurrentContentItem().setNumericValue(
-                  DSRNumericMeasurementValue(elementOFString.c_str(),
-                                             DSRCodedEntryValue("mm","UCUM","millimeter")));
-
-      element->getOFString(elementOFString, 1);
-      doc->getTree().addContentItem(DSRTypes::RT_hasAcqContext,
-                                    DSRTypes::VT_Num,
-                                    DSRTypes::AM_afterCurrent);
-      doc->getTree().getCurrentContentItem().setConceptName(
-                  DSRCodedEntryValue("110902","DCM","Image Position (Patient) Y"));
-      doc->getTree().getCurrentContentItem().setNumericValue(
-                  DSRNumericMeasurementValue(elementOFString.c_str(),
-                                             DSRCodedEntryValue("mm","UCUM","millimeter")));
-
-      element->getOFString(elementOFString, 2);
-      doc->getTree().addContentItem(DSRTypes::RT_hasAcqContext,
-                                    DSRTypes::VT_Num,
-                                    DSRTypes::AM_afterCurrent);
-      doc->getTree().getCurrentContentItem().setConceptName(
-                  DSRCodedEntryValue("110903","DCM","Image Position (Patient) Z"));
-      doc->getTree().getCurrentContentItem().setNumericValue(
-                  DSRNumericMeasurementValue(elementOFString.c_str(),
-                                             DSRCodedEntryValue("mm","UCUM","millimeter")));
-  }
-
-  // Image Orientation Patient
-  if(imgDataset->findAndGetElement(DCM_ImageOrientationPatient, element).good()){
-      element->getOFString(elementOFString, 0);
-      doc->getTree().addContentItem(DSRTypes::RT_hasAcqContext,
-                                    DSRTypes::VT_Num,
-                                    addMode);
-      addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
-
-      doc->getTree().getCurrentContentItem().setConceptName(
-                  DSRCodedEntryValue("110904","DCM","Image Orientation (Patient) Row X"));
-      doc->getTree().getCurrentContentItem().setNumericValue(
-                  DSRNumericMeasurementValue(elementOFString.c_str(),
-                                             DSRCodedEntryValue("{-1:1}","UCUM","{-1:1}")));
-
-      element->getOFString(elementOFString, 1);
-      doc->getTree().addContentItem(DSRTypes::RT_hasAcqContext,
-                                    DSRTypes::VT_Num,
-                                    DSRTypes::AM_afterCurrent);
-      doc->getTree().getCurrentContentItem().setConceptName(
-                  DSRCodedEntryValue("110905","DCM","Image Orientation (Patient) Row Y"));
-      doc->getTree().getCurrentContentItem().setNumericValue(
-                  DSRNumericMeasurementValue(elementOFString.c_str(),
-                                             DSRCodedEntryValue("{-1:1}","UCUM","{-1:1}")));
-
-      element->getOFString(elementOFString, 2);
-      doc->getTree().addContentItem(DSRTypes::RT_hasAcqContext,
-                                    DSRTypes::VT_Num,
-                                    DSRTypes::AM_afterCurrent);
-      doc->getTree().getCurrentContentItem().setConceptName(
-                  DSRCodedEntryValue("110906","DCM","Image Orientation (Patient) Row Z"));
-      doc->getTree().getCurrentContentItem().setNumericValue(
-                  DSRNumericMeasurementValue(elementOFString.c_str(),
-                                             DSRCodedEntryValue("{-1:1}","UCUM","{-1:1}")));
-
-      element->getOFString(elementOFString, 3);
-      doc->getTree().addContentItem(DSRTypes::RT_hasAcqContext,
-                                    DSRTypes::VT_Num,
-                                    DSRTypes::AM_afterCurrent);
-      doc->getTree().getCurrentContentItem().setConceptName(
-                  DSRCodedEntryValue("110907","DCM","Image Orientation (Patient) Column X"));
-      doc->getTree().getCurrentContentItem().setNumericValue(
-                  DSRNumericMeasurementValue(elementOFString.c_str(),
-                                             DSRCodedEntryValue("{-1:1}","UCUM","{-1:1}")));
-
-      element->getOFString(elementOFString, 4);
-      doc->getTree().addContentItem(DSRTypes::RT_hasAcqContext,
-                                    DSRTypes::VT_Num,
-                                    DSRTypes::AM_afterCurrent);
-      doc->getTree().getCurrentContentItem().setConceptName(
-                  DSRCodedEntryValue("110908","DCM","Image Orientation (Patient) Column Y"));
-      doc->getTree().getCurrentContentItem().setNumericValue(
-                  DSRNumericMeasurementValue(elementOFString.c_str(),
-                                             DSRCodedEntryValue("{-1:1}","UCUM","{-1:1}")));
-
-      element->getOFString(elementOFString, 5);
-      doc->getTree().addContentItem(DSRTypes::RT_hasAcqContext,
-                                    DSRTypes::VT_Num,
-                                    DSRTypes::AM_afterCurrent);
-      doc->getTree().getCurrentContentItem().setConceptName(
-                  DSRCodedEntryValue("110909","DCM","Image Orientation (Patient) Column Z"));
-      doc->getTree().getCurrentContentItem().setNumericValue(
-                  DSRNumericMeasurementValue(elementOFString.c_str(),
-                                             DSRCodedEntryValue("{-1:1}","UCUM","{-1:1}")));
-
-  }
-
-  // Image Orientation Patient
-  if(imgDataset->findAndGetElement(DCM_Rows, element).good()){
-      element->getOFString(elementOFString, 0);
-      doc->getTree().addContentItem(DSRTypes::RT_hasAcqContext,
-                                    DSRTypes::VT_Num,
-                                    addMode);
-      addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
-
-      doc->getTree().getCurrentContentItem().setConceptName(
+      tree.getCurrentContentItem().setConceptName(
                   DSRCodedEntryValue("110910","DCM","Pixel Data Rows"));
-      doc->getTree().getCurrentContentItem().setNumericValue(
+      tree.getCurrentContentItem().setNumericValue(
                   DSRNumericMeasurementValue(elementOFString.c_str(),
                                              DSRCodedEntryValue("{pixels}","UCUM","pixels")));
 
-      imgDataset->findAndGetElement(DCM_Columns, element);
+      dcm->findAndGetElement(DCM_Columns, element);
       element->getOFString(elementOFString, 0);
-      doc->getTree().addContentItem(DSRTypes::RT_hasAcqContext,
+      tree.addContentItem(DSRTypes::RT_hasAcqContext,
                                     DSRTypes::VT_Num,
                                     DSRTypes::AM_afterCurrent);
-      doc->getTree().getCurrentContentItem().setConceptName(
+      tree.getCurrentContentItem().setConceptName(
                   DSRCodedEntryValue("110911","DCM","Pixel Data Columns"));
-      doc->getTree().getCurrentContentItem().setNumericValue(
+      tree.getCurrentContentItem().setNumericValue(
                   DSRNumericMeasurementValue(elementOFString.c_str(),
                                              DSRCodedEntryValue("{pixels}","UCUM","pixels")));
   }
 
+  // TODO: populate PET descriptors, but Reinhard says nothing from that is
+  // needed and is duplication
 
-  doc->getTree().goUp(); // up to image level
-  doc->getTree().goUp(); // up to image library container level
-#endif
+  return;
+  if(addMode==DSRTypes::AM_afterCurrent)
+    tree.goUp();
+
+}
+
+void AddImageLibraryEntry(DSRDocumentTree &tree, DcmDataset *dcm){
+  {
+    DSRImageTreeNode *imageNode = new DSRImageTreeNode(DSRTypes::RT_contains);
+    OFString classUIDStr, instanceUIDStr;
+    DcmElement *classUIDElt, *instanceUIDElt;
+    CHECK_COND(dcm->findAndGetElement(DCM_SOPClassUID, classUIDElt));
+    CHECK_COND(dcm->findAndGetElement(DCM_SOPInstanceUID, instanceUIDElt));
+    classUIDElt->getOFString(classUIDStr, 0);
+    instanceUIDElt->getOFString(instanceUIDStr, 0);
+    CHECK_COND(imageNode->setReference(classUIDStr, instanceUIDStr));
+    CHECK_EQUAL(tree.addContentItem(imageNode, DSRTypes::AM_afterCurrent), imageNode);
+  }
 }
 
 /* Warning: assume here that there is a line with measurements for each
