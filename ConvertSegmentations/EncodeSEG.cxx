@@ -440,16 +440,16 @@ int main(int argc, char *argv[])
 
           OFVector<OFString> siVector;
           siVector.push_back(OFString(inputDICOMImageFileNames[slice2derimg[sliceNumber]].c_str()));
-          SourceImageItem* srcimgItem;
-          CHECK_COND(derimgItem->addSourceImageItem(siVector,
+          OFVector<SourceImageItem*> srcimgItems;
+          CHECK_COND(derimgItem->addSourceImageItems(siVector,
               CodeSequenceMacro("121322","DCM","Source image for image processing operation"),
-              srcimgItem));
+              srcimgItems));
 
           CHECK_COND(segdoc->addFrame(frameData, segmentNumber, perFrameFGs));
 
           if(1){
             // initialize class UID and series instance UID
-            ImageSOPInstanceReferenceMacro &instRef = srcimgItem->getImageSOPInstanceReference();
+            ImageSOPInstanceReferenceMacro &instRef = srcimgItems[0]->getImageSOPInstanceReference();
             OFString instanceUID;
             CHECK_COND(instRef.getReferencedSOPClassUID(classUID));
             CHECK_COND(instRef.getReferencedSOPInstanceUID(instanceUID));
