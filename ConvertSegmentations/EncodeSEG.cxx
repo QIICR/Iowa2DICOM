@@ -334,8 +334,12 @@ int main(int argc, char *argv[])
         if(algoTypeStr == "AUTOMATIC")
           algoType = DcmSegTypes::SAT_AUTOMATIC;
         if(algoTypeStr == "SEMIAUTOMATIC")
-          algoType = DcmSegTypes::SAT_SEMIAUTOMATIC;
+          algoType = DcmSegTypes::SAT_SEMIAUTOMATIC;        
         algoName = label2attributes[label].lookupAttribute("SegmentAlgorithmName");
+        if(algoName == ""){
+          std::cerr << "ERROR: Algorithm name must be specified for non-manual algorithm types!" << std::endl;
+          return -1;
+        }
       }
 
       OFString segmentLabel;

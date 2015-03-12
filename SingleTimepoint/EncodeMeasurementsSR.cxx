@@ -204,7 +204,15 @@ int main(int argc, char** argv)
   AddLanguageOfContent(tree);
 
   // TODO: initialize to more meaningful values
-  AddPersonObserverContext(tree, readerId.c_str());
+  if(deviceUID!=""){    
+    AddDeviceObserverContext(tree, deviceUID.c_str(), deviceName == "" ? NULL : deviceName.c_str(),
+        NULL, NULL, NULL);
+  } else if(readerId!="") {
+    AddPersonObserverContext(tree, readerId.c_str());
+  } else {
+    std::cerr << "ERROR: Either DeviceUID or Reader ID should be specified!" << std::endl;
+    return -1;
+  }
 
   {
     DSRCodeTreeNode *procedureCode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
@@ -387,25 +395,33 @@ void AddDeviceObserverContext(DSRDocumentTree &tree,
     CHECK_COND(observerUIDNode->setValue(deviceObserverUID));
     CHECK_EQUAL(tree.addContentItem(observerUIDNode, DSRTypes::AM_afterCurrent), observerUIDNode);
 
-    DSRTextTreeNode *observerNameNode = new DSRTextTreeNode(DSRTypes::RT_hasObsContext);
-    CHECK_COND(observerNameNode->setConceptName(DSRCodedEntryValue("121013","DCM","Device Observer Name")));
-    CHECK_COND(observerNameNode->setValue(deviceObserverName));
-    CHECK_EQUAL(tree.addContentItem(observerNameNode, DSRTypes::AM_afterCurrent), observerNameNode);
+    if(deviceObserverName){
+      DSRTextTreeNode *observerNameNode = new DSRTextTreeNode(DSRTypes::RT_hasObsContext);
+      CHECK_COND(observerNameNode->setConceptName(DSRCodedEntryValue("121013","DCM","Device Observer Name")));
+      CHECK_COND(observerNameNode->setValue(deviceObserverName));
+      CHECK_EQUAL(tree.addContentItem(observerNameNode, DSRTypes::AM_afterCurrent), observerNameNode);
+    }
 
-    DSRTextTreeNode *observerManufacturerNode = new DSRTextTreeNode(DSRTypes::RT_hasObsContext);
-    CHECK_COND(observerManufacturerNode->setConceptName(DSRCodedEntryValue("121014","DCM","Device Observer Manufacturer")));
-    CHECK_COND(observerManufacturerNode->setValue(deviceObserverManufacturer));
-    CHECK_EQUAL(tree.addContentItem(observerManufacturerNode, DSRTypes::AM_afterCurrent), observerManufacturerNode);
+    if(deviceObserverManufacturer){
+      DSRTextTreeNode *observerManufacturerNode = new DSRTextTreeNode(DSRTypes::RT_hasObsContext);
+      CHECK_COND(observerManufacturerNode->setConceptName(DSRCodedEntryValue("121014","DCM","Device Observer Manufacturer")));
+      CHECK_COND(observerManufacturerNode->setValue(deviceObserverManufacturer));
+      CHECK_EQUAL(tree.addContentItem(observerManufacturerNode, DSRTypes::AM_afterCurrent), observerManufacturerNode);
+    }
 
-    DSRTextTreeNode *observerModelNameNode = new DSRTextTreeNode(DSRTypes::RT_hasObsContext);
-    CHECK_COND(observerModelNameNode->setConceptName(DSRCodedEntryValue("121015","DCM","Device Observer Model Name")));
-    CHECK_COND(observerModelNameNode->setValue(deviceObserverModelName));
-    CHECK_EQUAL(tree.addContentItem(observerModelNameNode, DSRTypes::AM_afterCurrent), observerModelNameNode);
+    if(deviceObserverModelName){
+      DSRTextTreeNode *observerModelNameNode = new DSRTextTreeNode(DSRTypes::RT_hasObsContext);
+      CHECK_COND(observerModelNameNode->setConceptName(DSRCodedEntryValue("121015","DCM","Device Observer Model Name")));
+      CHECK_COND(observerModelNameNode->setValue(deviceObserverModelName));
+      CHECK_EQUAL(tree.addContentItem(observerModelNameNode, DSRTypes::AM_afterCurrent), observerModelNameNode);
+    }
 
-    DSRTextTreeNode *observerSerialNumberNode = new DSRTextTreeNode(DSRTypes::RT_hasObsContext);
-    CHECK_COND(observerSerialNumberNode->setConceptName(DSRCodedEntryValue("121016","DCM","Device Observer Serial Number")));
-    CHECK_COND(observerSerialNumberNode->setValue(deviceObserverSerialNumber));
-    CHECK_EQUAL(tree.addContentItem(observerSerialNumberNode, DSRTypes::AM_afterCurrent), observerSerialNumberNode);
+    if(deviceObserverSerialNumber){
+      DSRTextTreeNode *observerSerialNumberNode = new DSRTextTreeNode(DSRTypes::RT_hasObsContext);
+      CHECK_COND(observerSerialNumberNode->setConceptName(DSRCodedEntryValue("121016","DCM","Device Observer Serial Number")));
+      CHECK_COND(observerSerialNumberNode->setValue(deviceObserverSerialNumber));
+      CHECK_EQUAL(tree.addContentItem(observerSerialNumberNode, DSRTypes::AM_afterCurrent), observerSerialNumberNode);
+    }
 }
 
 void AddPersonObserverContext(DSRDocumentTree &tree,

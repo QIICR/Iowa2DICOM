@@ -75,6 +75,22 @@
     </string>
 
     <string>
+      <name>deviceUID</name>
+      <label>Device Unique Identifier</label>
+      <channel>input</channel>
+      <longflag>deviceUID</longflag>
+      <description>Device unique identifier. Note that either reader ID, or device UID must be specified!</description>
+    </string>
+    
+    <string>
+      <name>deviceName</name>
+      <label>Device Name</label>
+      <channel>input</channel>
+      <longflag>deviceName</longflag>
+      <description>Human-readable name of the device used to generate the report.</description>
+    </string>
+
+    <string>
       <name>sessionId</name>
       <label>Session Identifier</label>
       <channel>input</channel>
