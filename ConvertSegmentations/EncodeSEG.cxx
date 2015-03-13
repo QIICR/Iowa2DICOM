@@ -68,6 +68,31 @@ std::string FloatToStrScientific(float f){
   return sstream.str();
 }
 
+void checkValidityOfFirstSrcImage(DcmSegmentation *segdoc){
+  static int invocation = 0;
+          if(1){
+            FGInterface &fgInterface = segdoc->getFunctionalGroups();
+            bool isPerFrame = false;
+            FGDerivationImage *derimgfg =
+              OFstatic_cast(FGDerivationImage*,fgInterface.get(0, 
+                    DcmFGTypes::EFG_DERIVATIONIMAGE, isPerFrame));
+            assert(derimgfg);
+            assert(isPerFrame);
+
+            OFVector<DerivationImageItem*> &deritems = derimgfg->getDerivationImageItems();
+
+            OFVector<SourceImageItem*> &srcitems = deritems[0]->getSourceImageItems();
+            OFString codeValue;
+            CodeSequenceMacro &code = srcitems[0]->getPurposeOfReferenceCode();
+            if(code.getCodeValue(codeValue).good()) {
+              std::cout << "Purpose of reference code: " << codeValue << " " << invocation++ << std::endl;
+            } else {
+              std::cout << "Failed to look up purpose of reference code" << std::endl;
+              abort();
+            }
+          }
+}
+ 
 
 int main(int argc, char *argv[])
 {
@@ -429,11 +454,14 @@ int main(int argc, char *argv[])
             else
               frameData[framePixelCnt] = 0;
           }
-          OFVector<ImageSOPInstanceReferenceMacro> derivationImages;
-          // derivation images list is optional
-          derivationImages.clear();
-          // FIXME: ImageOrientationPatient will be added per frame!
+
+          if(sliceNumber!=firstSlice)
+            checkValidityOfFirstSrcImage(segdoc);
+
           fgder->clearData();
+
+          if(sliceNumber!=firstSlice)
+            checkValidityOfFirstSrcImage(segdoc);
 
           DerivationImageItem *derimgItem;
           CHECK_COND(fgder->addDerivationImageItem(CodeSequenceMacro("113076","DCM","Segmentation"),"",derimgItem));
@@ -446,6 +474,9 @@ int main(int argc, char *argv[])
               srcimgItems));
 
           CHECK_COND(segdoc->addFrame(frameData, segmentNumber, perFrameFGs));
+
+          // check if frame 0 still has what we expect
+          checkValidityOfFirstSrcImage(segdoc);
 
           if(1){
             // initialize class UID and series instance UID
@@ -469,7 +500,7 @@ int main(int argc, char *argv[])
       }
     }
   }
-
+outOfHere:
   //std::cout << "found:" << uidfound << " not: " << uidnotfound << std::endl;
 
   COUT << "Successfully created segmentation document" << OFendl;
