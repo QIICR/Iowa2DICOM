@@ -85,7 +85,7 @@ void checkValidityOfFirstSrcImage(DcmSegmentation *segdoc){
             OFString codeValue;
             CodeSequenceMacro &code = srcitems[0]->getPurposeOfReferenceCode();
             if(code.getCodeValue(codeValue).good()) {
-              std::cout << "Purpose of reference code: " << codeValue << " " << invocation++ << std::endl;
+              //std::cout << "Purpose of reference code: " << codeValue << " " << invocation++ << std::endl;
             } else {
               std::cout << "Failed to look up purpose of reference code" << std::endl;
               abort();
@@ -458,7 +458,9 @@ int main(int argc, char *argv[])
           if(sliceNumber!=firstSlice)
             checkValidityOfFirstSrcImage(segdoc);
 
-          fgder->clearData();
+          FGDerivationImage* fgder = new FGDerivationImage();
+          perFrameFGs[2] = fgder;
+          //fgder->clearData();
 
           if(sliceNumber!=firstSlice)
             checkValidityOfFirstSrcImage(segdoc);
