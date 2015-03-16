@@ -156,7 +156,7 @@ int main(int argc, char** argv)
   std::vector<DcmDataset*> petDatasets;
   DcmDataset* rwvmDataset;
   DcmDataset* segDataset;
-  OFString studyDate, studyTime;
+  OFString studyDate, studyTime, patientName, patientID, patientSex;
 
   QuantitiesDictionaryType quantitiesDictionary;
 
@@ -174,6 +174,12 @@ int main(int argc, char** argv)
         el->getOFString(studyDate, 0);
         petDatasets[0]->findAndGetElement(DCM_StudyTime, el);
         el->getOFString(studyTime, 0);
+        petDatasets[0]->findAndGetElement(DCM_PatientName, el);
+        el->getOFString(patientName, 0);
+        petDatasets[0]->findAndGetElement(DCM_PatientID, el);
+        el->getOFString(patientID, 0);
+        petDatasets[0]->findAndGetElement(DCM_PatientSex, el);
+        el->getOFString(patientSex, 0);
       }
     }
 
@@ -333,14 +339,12 @@ int main(int argc, char** argv)
   std::cout << "Before writing the dataset" << std::endl;
   doc->write(*datasetSR);
 
-/*
-  DcmItem i1, i2;
-  DcmModuleHelpers::copySOPCommonModule(i1,i2);
 
+  DcmModuleHelpers::copySOPCommonModule(*petDatasets[0],*datasetSR);
   DcmModuleHelpers::copyPatientModule(*petDatasets[0],*datasetSR);
   DcmModuleHelpers::copyPatientStudyModule(*petDatasets[0],*datasetSR);
   DcmModuleHelpers::copyGeneralStudyModule(*petDatasets[0],*datasetSR);
-*/
+
   if(outputSRFileName.size()){
     std::cout << "Will save the result to " << outputSRFileName << std::endl;
     fileformatSR->saveFile(outputSRFileName.c_str(), EXS_LittleEndianExplicit);
