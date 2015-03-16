@@ -10,8 +10,8 @@
 
 SUV_CALCULATOR=/Users/fedorov/local/builds/Slicer-SUVFactorCalculator/lib/Slicer-4.4/cli-modules/SUVFactorCalculator
 INDEX_CALCULATOR=/Users/fedorov/local/builds/Slicer-QuantitativeIndicesExt/lib/Slicer-4.4/cli-modules/QuantitativeIndicesCLI
-SEG_CONVERTER=/Users/fedorov/local/builds/Slicer4-Debug/Slicer-build/lib/Slicer-4.4/cli-modules/EncodeSEG
-SR_CONVERTER=/Users/fedorov/local/builds/Slicer4-Debug/Slicer-build/lib/Slicer-4.4/cli-modules/EncodeMeasurementsSR
+SEG_CONVERTER=/Users/fedorov/local/builds/Slicer4-Release/Slicer-build/lib/Slicer-4.4/cli-modules/EncodeSEG
+SR_CONVERTER=/Users/fedorov/local/builds/Slicer4-Release/Slicer-build/lib/Slicer-4.4/cli-modules/EncodeMeasurementsSR
 
 SLICER_BINARY=/Applications/Slicer-2014-12-12-nightly.app/Contents/MacOS/Slicer
 

@@ -156,7 +156,6 @@ int main(int argc, char** argv)
   std::vector<DcmDataset*> petDatasets;
   DcmDataset* rwvmDataset;
   DcmDataset* segDataset;
-  OFString studyDate, studyTime, patientName, patientID, patientSex;
 
   QuantitiesDictionaryType quantitiesDictionary;
 
@@ -166,21 +165,6 @@ int main(int argc, char** argv)
     for(int i=0;i<inputPETFileNames.size();i++){
       CHECK_COND(ff.loadFile(inputPETFileNames[i].c_str()));
       petDatasets.push_back(ff.getAndRemoveDataset());
-
-      if(!i){
-        // get the study date/time
-        DcmElement *el;
-        petDatasets[0]->findAndGetElement(DCM_StudyDate, el);
-        el->getOFString(studyDate, 0);
-        petDatasets[0]->findAndGetElement(DCM_StudyTime, el);
-        el->getOFString(studyTime, 0);
-        petDatasets[0]->findAndGetElement(DCM_PatientName, el);
-        el->getOFString(patientName, 0);
-        petDatasets[0]->findAndGetElement(DCM_PatientID, el);
-        el->getOFString(patientID, 0);
-        petDatasets[0]->findAndGetElement(DCM_PatientSex, el);
-        el->getOFString(patientSex, 0);
-      }
     }
 
     CHECK_COND(ff.loadFile(inputRWVMFileName.c_str()));
@@ -198,10 +182,6 @@ int main(int argc, char** argv)
   // create root document
   doc->createNewDocument(DSRTypes::DT_ComprehensiveSR);
   doc->setSeriesDescription("ROI quantitative measurement");
-
-  // setting study date to that of the source image series
-  doc->setStudyDate(studyDate);
-  doc->setStudyTime(studyTime);
 
   DSRDocumentTree &tree = doc->getTree();
 
