@@ -319,8 +319,6 @@ int main(int argc, char** argv)
   std::cout << "Before writing the dataset" << std::endl;
   doc->write(*datasetSR);
 
-
-  DcmModuleHelpers::copySOPCommonModule(*petDatasets[0],*datasetSR);
   DcmModuleHelpers::copyPatientModule(*petDatasets[0],*datasetSR);
   DcmModuleHelpers::copyPatientStudyModule(*petDatasets[0],*datasetSR);
   DcmModuleHelpers::copyGeneralStudyModule(*petDatasets[0],*datasetSR);
