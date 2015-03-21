@@ -181,7 +181,8 @@ int main(int argc, char** argv)
 
   // create root document
   doc->createNewDocument(DSRTypes::DT_ComprehensiveSR);
-  doc->setSeriesDescription("ROI quantitative measurement");
+  doc->setSeriesDescription(seriesDescription.c_str());
+  doc->setSeriesNumber(seriesNumber.c_str());
 
   DSRDocumentTree &tree = doc->getTree();
 
@@ -264,6 +265,9 @@ int main(int argc, char** argv)
       std::string trackingIDStr, trackingUIDStr;
       if(segmentAttributes[i].lookupAttribute("TrackingID") == ""){
         std::stringstream trackingIDStream;
+        // Warning: specific to Iowa dataset, to avoid errors
+        std::cerr << "ERROR: TrackingID is missing in the input!" << std::endl;
+        abort();
         trackingIDStream << "Segment" << i+1;
         trackingIDStr = trackingIDStream.str();
       } else {
@@ -272,6 +276,9 @@ int main(int argc, char** argv)
 
       if(segmentAttributes[i].lookupAttribute("TrackingUID") == ""){      
         char trackingUID[128];
+        // Warning: specific to Iowa dataset, to avoid errors
+        std::cerr << "ERROR: TrackingUID is missing in the input!" << std::endl;
+        abort();
         dcmGenerateUniqueIdentifier(trackingUID, SITE_INSTANCE_UID_ROOT);
         trackingUIDStr = std::string(trackingUID);
       } else {
@@ -313,6 +320,9 @@ int main(int argc, char** argv)
   // software versioning
   datasetSR->putAndInsertString(DCM_ManufacturerModelName, Iowa2DICOM_WC_URL);
   datasetSR->putAndInsertString(DCM_SoftwareVersions, Iowa2DICOM_WC_REVISION);
+
+  // anatomy
+  datasetSR->putAndInsertString(DCM_BodyPartExamined, "HEADNECK");
 
   AddCodingScheme(doc, "99PMP", "1.3.6.1.4.1.5962.98.1", "PixelMed Publishing");
 
@@ -602,18 +612,6 @@ void AddImageLibraryEntryDescriptors(DSRDocumentTree& tree, DcmDataset* dcm){
     addMode = DSRTypes::AM_afterCurrent;
   }
 
-  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_Rows, 
-      DSRTypes::RT_hasAcqContext, DSRTypes::VT_Num, addMode,
-      DSRCodedEntryValue("110910","DCM","Pixel Data Rows")).good()){
-    addMode = DSRTypes::AM_afterCurrent;
-  }
-
-  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_Columns, 
-      DSRTypes::RT_hasAcqContext, DSRTypes::VT_Num, addMode,
-      DSRCodedEntryValue("110911","DCM","Pixel Data Columns")).good()){
-    addMode = DSRTypes::AM_afterCurrent;
-  }
-
   if(dcm->findAndGetElement(DCM_Rows, element).good()){
       element->getOFString(elementOFString, 0);
       tree.addContentItem(DSRTypes::RT_hasAcqContext,
@@ -641,6 +639,50 @@ void AddImageLibraryEntryDescriptors(DSRDocumentTree& tree, DcmDataset* dcm){
 
   // TODO: populate PET descriptors, but Reinhard says nothing from that is
   // needed and is duplication
+  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_RadiopharmaceuticalStartTime,
+      DSRTypes::RT_hasAcqContext, DSRTypes::VT_DateTime, addMode,
+      DSRCodedEntryValue("123003","DCM","Radiopharmaceutical Start Date Time")).good()){
+    addMode = DSRTypes::AM_afterCurrent;
+  }
+ 
+  if(dcm->findAndGetElement(DCM_RadionuclideTotalDose, element).good()){
+      element->getOFString(elementOFString, 0);
+      tree.addContentItem(DSRTypes::RT_hasAcqContext,
+                                    DSRTypes::VT_Num,
+                                    addMode);
+      addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
+
+      tree.getCurrentContentItem().setConceptName(
+                  DSRCodedEntryValue("123006","DCM","Radionuclide Total Dose"));
+      tree.getCurrentContentItem().setNumericValue(
+                  DSRNumericMeasurementValue(elementOFString.c_str(),
+                                             DSRCodedEntryValue("Bq","UCUM","Bq")));
+  }
+
+  // Warning: hard-coded, specific to Iowa use case, not available in the
+  // source PET dataset!
+  {
+      tree.addContentItem(DSRTypes::RT_hasAcqContext,
+                                    DSRTypes::VT_Code,
+                                    addMode);
+      addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
+
+      tree.getCurrentContentItem().setConceptName(
+                  DSRCodedEntryValue("C-10072","SRT","Radionuclide"));
+      tree.getCurrentContentItem().setCodeValue(DSRCodedEntryValue("C-111A1","SRT","^18^Fluorine"));
+  }
+
+  {
+      tree.addContentItem(DSRTypes::RT_hasAcqContext,
+                                    DSRTypes::VT_Code,
+                                    addMode);
+      addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
+
+      tree.getCurrentContentItem().setConceptName(
+                  DSRCodedEntryValue("F-61FDB","SRT","Radiopharmaceutical agent"));
+      tree.getCurrentContentItem().setCodeValue(DSRCodedEntryValue("C-B1031","SRT","Fluorodeoxyglucose F^18^"));
+  }
+
 
   return;
   if(addMode==DSRTypes::AM_afterCurrent)
@@ -881,7 +923,12 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
       CHECK_EQUAL(tree.addContentItem(measurementNode, DSRTypes::AM_afterCurrent),measurementNode);
 
       DSRCodeTreeNode *modNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
-      CHECK_COND(modNode->setConceptName(DSRCodedEntryValue("121401","DCM","Derivation")));
+      // Special case for SAM_Background ...
+      if(std::string(measurements[i].QuantityCode.getCodeValue().c_str()) == "126038")
+
+        CHECK_COND(modNode->setConceptName(DSRCodedEntryValue("G-C036","SRT","Measurement Method")));
+      else
+        CHECK_COND(modNode->setConceptName(DSRCodedEntryValue("121401","DCM","Derivation")));
       DSRCodedEntryValue quantityCode = measurements[i].QuantityCode;
       CHECK_COND(modNode->setCode(quantityCode.getCodeValue(), quantityCode.getCodingSchemeDesignator(), quantityCode.getCodeMeaning()));
       CHECK_EQUAL(tree.addContentItem(modNode, DSRTypes::AM_belowCurrent), modNode);
@@ -897,13 +944,20 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
       measurementNode->setValue(measurementValue);
       CHECK_EQUAL(tree.addContentItem(measurementNode, DSRTypes::AM_afterCurrent),measurementNode);
 
-      /*
-      DSRCodeTreeNode *modNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
-      CHECK_COND(modNode->setConceptName(DSRCodedEntryValue("G-C036","SRT","Measurement Method")));
-      CHECK_COND(modNode->setCode("126410", "DCM","SUV body weight calculation method"));
-      CHECK_EQUAL(tree.addContentItem(modNode, DSRTypes::AM_belowCurrent), modNode);      
-      tree.goUp();
-      */
+      // special cases for quantities that start with Glycolysis or Percent, and for
+      // SAM
+      DSRCodedEntryValue quantity = measurements[i].QuantityCode;
+      if(std::string(quantity.getCodeValue().c_str()) == "126037" or
+         std::string(quantity.getCodeMeaning().c_str()).find("Glycolysis") == 0 or
+         std::string(quantity.getCodeMeaning().c_str()).find("Percent" == 0)
+          )
+      {
+        DSRCodeTreeNode *modNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
+        CHECK_COND(modNode->setConceptName(DSRCodedEntryValue("G-C036","SRT","Measurement Method")));
+        CHECK_COND(modNode->setCode("126410", "DCM","SUV body weight calculation method"));
+        CHECK_EQUAL(tree.addContentItem(modNode, DSRTypes::AM_belowCurrent), modNode);      
+        tree.goUp();
+      }
     }
   }
 

@@ -214,6 +214,7 @@ int main(int argc, char *argv[])
     spacingSStream.clear(); spacingSStream.str("");
     spacingSStream << std::scientific << labelSpacing[2];
     CHECK_COND(pixmsr->setSpacingBetweenSlices(spacingSStream.str().c_str()));
+    CHECK_COND(pixmsr->setSliceThickness(spacingSStream.str().c_str()));
     CHECK_COND(segdoc->addForAllFrames(*pixmsr));
   }
 
@@ -517,6 +518,10 @@ outOfHere:
   CHECK_COND(segdocDataset.putAndInsertString(DCM_ContentCreatorName, readerId.c_str()));
   CHECK_COND(segdocDataset.putAndInsertString(DCM_ClinicalTrialSeriesID, sessionId.c_str()));
   CHECK_COND(segdocDataset.putAndInsertString(DCM_ClinicalTrialTimePointID, timePointId.c_str()));
+  CHECK_COND(segdocDataset.putAndInsertString(DCM_ClinicalTrialCoordinatingCenterName, "UIowa"));
+  
+  // anatomy
+  CHECK_COND(segdocDataset.putAndInsertString(DCM_BodyPartExamined, "HEADNECK"));
 
   // StudyDate/Time should be of the series segmented, not when segmentation was made - this is initialized by DCMTK
 
@@ -532,6 +537,7 @@ outOfHere:
     segdocDataset.putAndInsertString(DCM_SeriesTime, contentTime.c_str());
 
     segdocDataset.putAndInsertString(DCM_SeriesDescription, seriesDescription.c_str());
+    segdocDataset.putAndInsertString(DCM_SeriesNumber, seriesNumber.c_str());
     segdocDataset.putAndInsertString(DCM_ContentLabel, "QIICR QIN IOWA");
 
   }

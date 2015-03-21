@@ -66,6 +66,14 @@
       <description>Series description</description>
     </string>
 
+    <string>
+      <name>seriesNumber</name>
+      <label>Series number</label>
+      <channel>input</channel>
+      <longflag>seriesNumber</longflag>
+      <description>Series number - make it unique for series wihin a study.</description>
+    </string>
+
     <file>
       <name>algorithmDescriptionFileName</name>
       <label>Algorithm description file</label>
