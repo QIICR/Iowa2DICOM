@@ -318,8 +318,8 @@ int main(int argc, char** argv)
   doc->setSeriesTime(contentTime.c_str());
 
   // software versioning
-  datasetSR->putAndInsertString(DCM_ManufacturerModelName, Iowa2DICOM_WC_URL);
-  datasetSR->putAndInsertString(DCM_SoftwareVersions, Iowa2DICOM_WC_REVISION);
+  doc->setManufacturerModelName(Iowa2DICOM_WC_URL);
+  doc->setSoftwareVersions(Iowa2DICOM_WC_REVISION);
 
   // anatomy
   datasetSR->putAndInsertString(DCM_BodyPartExamined, "HEADNECK");
