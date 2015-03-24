@@ -521,7 +521,8 @@ outOfHere:
   CHECK_COND(segdocDataset.putAndInsertString(DCM_ClinicalTrialCoordinatingCenterName, "UIowa"));
   
   // anatomy
-  CHECK_COND(segdocDataset.putAndInsertString(DCM_BodyPartExamined, "HEADNECK"));
+  if(bodyPart.size())
+    CHECK_COND(segdocDataset.putAndInsertString(DCM_BodyPartExamined, bodyPart.c_str()));
 
   // StudyDate/Time should be of the series segmented, not when segmentation was made - this is initialized by DCMTK
 

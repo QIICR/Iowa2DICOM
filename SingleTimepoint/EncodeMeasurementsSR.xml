@@ -122,6 +122,14 @@
       <description>Series number - make it unique for series wihin a study.</description>
     </string>
 
+    <string>
+      <name>bodyPart</name>
+      <label>Body part</label>
+      <channel>input</channel>
+      <longflag>bodyPart</longflag>
+      <description>Body part - optional - provide body part code to store in the input dataset.</description>
+    </string>
+
   </parameters>
 
 </executable>

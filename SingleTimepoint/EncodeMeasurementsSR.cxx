@@ -322,7 +322,8 @@ int main(int argc, char** argv)
   doc->setSoftwareVersions(Iowa2DICOM_WC_REVISION);
 
   // anatomy
-  datasetSR->putAndInsertString(DCM_BodyPartExamined, "HEADNECK");
+  if(bodyPart.size())
+    CHECK_COND(datasetSR->putAndInsertString(DCM_BodyPartExamined, bodyPart.c_str()));
 
   AddCodingScheme(doc, "99PMP", "1.3.6.1.4.1.5962.98.1", "PixelMed Publishing");
 
