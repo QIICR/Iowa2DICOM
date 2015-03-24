@@ -321,10 +321,6 @@ int main(int argc, char** argv)
   doc->setManufacturerModelName(Iowa2DICOM_WC_URL);
   doc->setSoftwareVersions(Iowa2DICOM_WC_REVISION);
 
-  // anatomy
-  if(bodyPart.size())
-    CHECK_COND(datasetSR->putAndInsertString(DCM_BodyPartExamined, bodyPart.c_str()));
-
   AddCodingScheme(doc, "99PMP", "1.3.6.1.4.1.5962.98.1", "PixelMed Publishing");
 
   std::cout << "Before writing the dataset" << std::endl;
