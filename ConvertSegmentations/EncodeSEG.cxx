@@ -404,7 +404,7 @@ int main(int argc, char *argv[])
         // PerFrame FG: FrameContentSequence
         //fracon->setStackID("1"); // all frames go into the same stack
         CHECK_COND(fgfc->setDimensionIndexValues(segmentNumber, 0));
-        CHECK_COND(fgfc->setDimensionIndexValues(sliceNumber+1, 1));
+        CHECK_COND(fgfc->setDimensionIndexValues(sliceNumber-firstSlice+1, 1));
         //std::ostringstream inStackPosSStream; // StackID is not present/needed
         //inStackPosSStream << s+1;
         //fracon->setInStackPositionNumber(s+1);
