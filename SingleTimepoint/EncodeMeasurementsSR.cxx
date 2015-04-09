@@ -946,7 +946,7 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
       DSRCodedEntryValue quantity = measurements[i].QuantityCode;
       if(std::string(quantity.getCodeValue().c_str()) == "126037" or
          std::string(quantity.getCodeMeaning().c_str()).find("Glycolysis") == 0 or
-         std::string(quantity.getCodeMeaning().c_str()).find("Percent" == 0)
+         std::string(quantity.getCodeMeaning().c_str()).find("Percent") == 0
           )
       {
         DSRCodeTreeNode *modNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
