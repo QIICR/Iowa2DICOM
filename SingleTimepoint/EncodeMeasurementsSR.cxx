@@ -846,10 +846,14 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
   CHECK_COND(modNode->setCode("126410", "DCM","SUV body weight calculation method"));
   CHECK_EQUAL(tree.addContentItem(modNode, DSRTypes::AM_afterCurrent), modNode);      
  
-  DSRCodeTreeNode *findingSiteNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
-  CHECK_COND(findingSiteNode->setConceptName(DSRCodedEntryValue("G-C0E3","SRT","Finding Site")));
-  CHECK_COND(findingSiteNode->setCode(findingSite.getCodeValue(), findingSite.getCodingSchemeDesignator(), findingSite.getCodeMeaning()));
-  CHECK_EQUAL(tree.addContentItem(findingSiteNode, DSRTypes::AM_afterCurrent), findingSiteNode);
+  // Finding site should be populated only if the code is initialized! Assuming
+  // code 0 is not initialized (line 288)
+  if(std::string(findingSite.getCodeValue().c_str()) != std::string("0")){
+    DSRCodeTreeNode *findingSiteNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
+    CHECK_COND(findingSiteNode->setConceptName(DSRCodedEntryValue("G-C0E3","SRT","Finding Site")));
+    CHECK_COND(findingSiteNode->setCode(findingSite.getCodeValue(), findingSite.getCodingSchemeDesignator(), findingSite.getCodeMeaning()));
+    CHECK_EQUAL(tree.addContentItem(findingSiteNode, DSRTypes::AM_afterCurrent), findingSiteNode);
+  }
 
   /* debugging
   if(0){ 
