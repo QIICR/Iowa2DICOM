@@ -122,6 +122,15 @@
       <description>Series number - make it unique for series wihin a study.</description>
     </string>
 
+    <string>
+      <name>instanceNumber</name>
+      <label>Instance number</label>
+      <channel>input</channel>
+      <longflag>instanceNumber</longflag>
+      <description>Instance number</description>
+      <default>"1"</default>
+    </string>
+
   </parameters>
 
 </executable>

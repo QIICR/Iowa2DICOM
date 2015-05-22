@@ -183,6 +183,7 @@ int main(int argc, char** argv)
   doc->createNewDocument(DSRTypes::DT_ComprehensiveSR);
   doc->setSeriesDescription(seriesDescription.c_str());
   doc->setSeriesNumber(seriesNumber.c_str());
+  doc->setInstanceNumber(instanceNumber.c_str());
 
   DSRDocumentTree &tree = doc->getTree();
 

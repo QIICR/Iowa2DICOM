@@ -75,6 +75,15 @@
     </string>
 
     <string>
+      <name>instanceNumber</name>
+      <label>Instance number</label>
+      <channel>input</channel>
+      <longflag>instanceNumber</longflag>
+      <description>Instance number</description>
+      <default>"1"</default>
+    </string>
+
+    <string>
       <name>bodyPart</name>
       <label>Body part</label>
       <channel>input</channel>

@@ -145,11 +145,6 @@ int main(int argc, char *argv[])
   /* Import patient and study from existing file */
   CHECK_COND(segdoc->importPatientStudyFoR(inputDICOMImageFileNames[0].c_str(), OFTrue, OFTrue, OFFalse, OFTrue));
 
-  /* Series Number is part 1 and we do not take over the series, so set it
-   * TODO: Invent automatically if not set by user
-   */
-  CHECK_COND(segdoc->getSeries().setSeriesNumber("4711"));
-
   /* Initialize dimension module */
   char dimUID[128];
   dcmGenerateUniqueIdentifier(dimUID, QIICR_UID_ROOT);
@@ -539,6 +534,7 @@ outOfHere:
 
     segdocDataset.putAndInsertString(DCM_SeriesDescription, seriesDescription.c_str());
     segdocDataset.putAndInsertString(DCM_SeriesNumber, seriesNumber.c_str());
+    segdocDataset.putAndInsertString(DCM_InstanceNumber, instanceNumber.c_str());
     segdocDataset.putAndInsertString(DCM_ContentLabel, "QIICR QIN IOWA");
 
   }
