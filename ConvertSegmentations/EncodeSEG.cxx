@@ -326,11 +326,16 @@ int main(int argc, char *argv[])
       unsigned firstSlice, lastSlice;
       if(skipEmptySlices){
         firstSlice = bbox[4];
-        lastSlice = bbox[5];
+        lastSlice = bbox[5]+1;
       } else {
         firstSlice = 0;
         lastSlice = inputSize[2];
       }
+
+      std::cout << "Total non-empty slices that will be encoded in SEG for label " <<
+        label << " is " << lastSlice-firstSlice << std::endl << 
+        " (inclusive from " << firstSlice << " to " <<
+        lastSlice << ")" << std::endl;
 
       DcmSegment* segment = NULL;
 
