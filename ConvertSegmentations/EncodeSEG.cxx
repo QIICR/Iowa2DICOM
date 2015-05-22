@@ -389,6 +389,16 @@ int main(int argc, char *argv[])
         }
       }
 
+      std::string cielab = label2attributes[label].lookupAttribute("RecommendedDisplayCIELabValue");
+      if(cielab != ""){        
+        unsigned cielabInt[3];
+        std::vector<std::string> cielabStrVector;
+        TokenizeString(cielab,cielabStrVector,",");
+        for(int cie_i=0;cie_i<3;cie_i++)
+          cielabInt[cie_i] = atoi(cielabStrVector[cie_i].c_str());
+        CHECK_COND(segment->setRecommendedDisplayCIELabValue(cielabInt[0],cielabInt[1],cielabInt[2]));
+      }
+
       Uint16 segmentNumber;
       CHECK_COND(segdoc->addSegment(segment, segmentNumber /* returns logical segment number */));
 
@@ -503,7 +513,7 @@ int main(int argc, char *argv[])
       }
     }
   }
-outOfHere:
+
   //std::cout << "found:" << uidfound << " not: " << uidnotfound << std::endl;
 
   COUT << "Successfully created segmentation document" << OFendl;
@@ -541,7 +551,6 @@ outOfHere:
     segdocDataset.putAndInsertString(DCM_SeriesNumber, seriesNumber.c_str());
     segdocDataset.putAndInsertString(DCM_InstanceNumber, instanceNumber.c_str());
     segdocDataset.putAndInsertString(DCM_ContentLabel, "QIICR QIN IOWA");
-
   }
 
   DcmFileFormat segdocFF(&segdocDataset);

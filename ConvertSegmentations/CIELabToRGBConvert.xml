@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<executable>
+  <category>Testing</category>
+  <title>CIELab-RGB conversion</title>
+  <description></description>
+  <version></version>
+  <documentation-url></documentation-url>
+  <license></license>
+  <contributor>Andrey Fedorov, BWH</contributor>
+<acknowledgements></acknowledgements>
+
+<parameters>
+
+    <string>
+      <name>cielabStr</name>
+      <label>CIELab color</label>
+      <channel>input</channel>
+      <longflag>cie</longflag>
+      <description></description>
+    </string>
+
+    <string>
+      <name>rgbStr</name>
+      <label>RGB color</label>
+      <channel>input</channel>
+      <longflag>rgb</longflag>
+      <description></description>
+    </string>
+
+  </parameters>
+
+</executable>
