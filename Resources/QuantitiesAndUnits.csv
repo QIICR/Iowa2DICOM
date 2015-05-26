@@ -1,6 +1,6 @@
 Quantity encoding,Quantity code,Quantity coding scheme designator,Quantity meaning,Units code,Units coding scheme designator,Units meaning
 Mean,R-00317,SRT,Mean,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight
-Variance,C1711260,UMLS,Variance,g2/ml2,UCUM,Gram**2/milliliter**2
+Variance,C1711260,UMLS,Variance,{SUVbw2}g2/ml2,UCUM,Standardized Uptake Value body weight squared
 Min,R-404FB,SRT,Minimum,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight
 Max,G-A437,SRT,Maximum,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight
 Volume,G-D705,SRT,Volume,ml,UCUM,Milliliter
