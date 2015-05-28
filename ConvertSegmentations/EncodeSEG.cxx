@@ -128,8 +128,7 @@ int main(int argc, char *argv[])
   ContentIdentificationMacro ident;
   CHECK_COND(ident.setContentCreatorName("QIICR"));
   CHECK_COND(ident.setContentDescription("Iowa QIN segmentation result"));
-  CHECK_COND(ident.setContentLabel("QINIOWA"));
-  CHECK_COND(ident.setInstanceNumber("1234")); // is there a better way to initialize this?
+  CHECK_COND(ident.setInstanceNumber(instanceNumber.c_str()));
 
   /* Create new segementation document */
   DcmDataset segdocDataset;
@@ -549,7 +548,6 @@ int main(int argc, char *argv[])
 
     segdocDataset.putAndInsertString(DCM_SeriesDescription, seriesDescription.c_str());
     segdocDataset.putAndInsertString(DCM_SeriesNumber, seriesNumber.c_str());
-    segdocDataset.putAndInsertString(DCM_InstanceNumber, instanceNumber.c_str());
     segdocDataset.putAndInsertString(DCM_ContentLabel, "QIICR QIN IOWA");
   }
 
