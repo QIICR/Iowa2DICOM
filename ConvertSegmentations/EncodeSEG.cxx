@@ -128,6 +128,7 @@ int main(int argc, char *argv[])
   ContentIdentificationMacro ident;
   CHECK_COND(ident.setContentCreatorName("QIICR"));
   CHECK_COND(ident.setContentDescription("Iowa QIN segmentation result"));
+  CHECK_COND(ident.setContentLabel("QIICR QIN IOWA"));
   CHECK_COND(ident.setInstanceNumber(instanceNumber.c_str()));
 
   /* Create new segementation document */
@@ -548,7 +549,6 @@ int main(int argc, char *argv[])
 
     segdocDataset.putAndInsertString(DCM_SeriesDescription, seriesDescription.c_str());
     segdocDataset.putAndInsertString(DCM_SeriesNumber, seriesNumber.c_str());
-    segdocDataset.putAndInsertString(DCM_ContentLabel, "QIICR QIN IOWA");
   }
 
   DcmFileFormat segdocFF(&segdocDataset);

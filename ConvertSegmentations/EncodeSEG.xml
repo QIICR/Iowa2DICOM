@@ -80,7 +80,7 @@
       <channel>input</channel>
       <longflag>instanceNumber</longflag>
       <description>Instance number</description>
-      <default>"1"</default>
+      <default>1</default>
     </string>
 
     <string>
