@@ -257,7 +257,7 @@ int main(int argc, char** argv)
 
       DSRContainerTreeNode *measurementsGroup = new DSRContainerTreeNode(DSRTypes::RT_contains);
       CHECK_COND(measurementsGroup->setConceptName(DSRCodedEntryValue("125007","DCM","Measurement Group")));
-      CHECK_COND(measurementsGroup->setTemplateIdentification("1501","DCMR"));
+      CHECK_COND(measurementsGroup->setTemplateIdentification("1411","DCMR"));
       CHECK_EQUAL(tree.addContentItem(measurementsGroup, DSRTypes::AM_belowCurrent), measurementsGroup);
 
       // pass segment number here as well - assign it to be the same as the
@@ -813,16 +813,11 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
                                DSRCodedEntryValue &findingSite){
   std::cout << "Populating group ..." << std::endl;
 
-  DSRTextTreeNode *timepointNode = new DSRTextTreeNode(DSRTypes::RT_hasObsContext);
-  CHECK_COND(timepointNode->setConceptName(DSRCodedEntryValue("C2348792","UMLS","Time Point")));
-  CHECK_COND(timepointNode->setValue(timePointId));
-  CHECK_EQUAL(tree.addContentItem(timepointNode, DSRTypes::AM_belowCurrent),timepointNode);
-
   // FYI: session stuff is non-standard ...
   DSRTextTreeNode *sessionNode = new DSRTextTreeNode(DSRTypes::RT_hasObsContext);
   CHECK_COND(sessionNode->setConceptName(DSRCodedEntryValue("C67447","NCIt","Activity Session")));
   CHECK_COND(sessionNode->setValue(sessionId));
-  CHECK_EQUAL(tree.addContentItem(sessionNode, DSRTypes::AM_afterCurrent),sessionNode);
+  CHECK_EQUAL(tree.addContentItem(sessionNode, DSRTypes::AM_belowCurrent),sessionNode);
 
   DSRTextTreeNode *trackingIDNode = new DSRTextTreeNode(DSRTypes::RT_hasObsContext);
   CHECK_COND(trackingIDNode->setConceptName(DSRCodedEntryValue("112039","DCM","Tracking Identifier")));
@@ -835,12 +830,7 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
   CHECK_COND(trackingUIDNode->setValue(trackingUID));
   CHECK_COND(trackingUIDNode->setConceptName(DSRCodedEntryValue("112040","DCM","Tracking Unique Identifier")));
   CHECK_EQUAL(tree.addContentItem(trackingUIDNode, DSRTypes::AM_afterCurrent),
-              trackingUIDNode);
-
-  DSRCodeTreeNode *modNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
-  CHECK_COND(modNode->setConceptName(DSRCodedEntryValue("G-C036","SRT","Measurement Method")));
-  CHECK_COND(modNode->setCode("126410", "DCM","SUV body weight calculation method"));
-  CHECK_EQUAL(tree.addContentItem(modNode, DSRTypes::AM_afterCurrent), modNode);      
+              trackingUIDNode);  
  
   // Finding and finding site should be populated only if the code is initialized! Assuming
   // code 0 is not initialized (line 288)
@@ -851,12 +841,10 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
     CHECK_EQUAL(tree.addContentItem(findingNode, DSRTypes::AM_afterCurrent), findingNode);
   }
 
-  if(std::string(findingSite.getCodeValue().c_str()) != std::string("0")){
-    DSRCodeTreeNode *findingSiteNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
-    CHECK_COND(findingSiteNode->setConceptName(DSRCodedEntryValue("G-C0E3","SRT","Finding Site")));
-    CHECK_COND(findingSiteNode->setCode(findingSite.getCodeValue(), findingSite.getCodingSchemeDesignator(), findingSite.getCodeMeaning()));
-    CHECK_EQUAL(tree.addContentItem(findingSiteNode, DSRTypes::AM_afterCurrent), findingSiteNode);
-  }
+  DSRTextTreeNode *timepointNode = new DSRTextTreeNode(DSRTypes::RT_hasObsContext);
+  CHECK_COND(timepointNode->setConceptName(DSRCodedEntryValue("C2348792","UMLS","Time Point")));
+  CHECK_COND(timepointNode->setValue(timePointId));
+  CHECK_EQUAL(tree.addContentItem(timepointNode, DSRTypes::AM_afterCurrent),timepointNode);
 
   /* debugging
   if(0){ 
@@ -912,6 +900,18 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
     rwvmNode->setValue(refValue);
     CHECK_COND(rwvmNode->setConceptName(DSRCodedEntryValue("126100","DCM","Real World Value Map used for measurement")));
     CHECK_EQUAL(tree.addContentItem(rwvmNode, DSRTypes::AM_afterCurrent), rwvmNode);
+  }
+
+  DSRCodeTreeNode *modNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
+  CHECK_COND(modNode->setConceptName(DSRCodedEntryValue("G-C036","SRT","Measurement Method")));
+  CHECK_COND(modNode->setCode("126410", "DCM","SUV body weight calculation method"));
+  CHECK_EQUAL(tree.addContentItem(modNode, DSRTypes::AM_afterCurrent), modNode);
+
+  if(std::string(findingSite.getCodeValue().c_str()) != std::string("0")){
+    DSRCodeTreeNode *findingSiteNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
+    CHECK_COND(findingSiteNode->setConceptName(DSRCodedEntryValue("G-C0E3","SRT","Finding Site")));
+    CHECK_COND(findingSiteNode->setCode(findingSite.getCodeValue(), findingSite.getCodingSchemeDesignator(), findingSite.getCodeMeaning()));
+    CHECK_EQUAL(tree.addContentItem(findingSiteNode, DSRTypes::AM_afterCurrent), findingSiteNode);
   }
 
   std::cout << "Group has " << measurements.size() << " measurements" << std::endl;
