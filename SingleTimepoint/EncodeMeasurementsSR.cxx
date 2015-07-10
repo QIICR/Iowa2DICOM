@@ -911,6 +911,13 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
   CHECK_EQUAL(tree.addContentItem(modNode, DSRTypes::AM_afterCurrent), modNode);
 
   if(std::string(findingSite.getCodeValue().c_str()) != std::string("0")){
+    // Special handling here since Aortic arch is segmented in CT, but measurements are done in resampled PET
+    if(findingSite.getCodeMeaning() == "Aortic arch"){
+      DSRCodeTreeNode *findingSiteNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
+      CHECK_COND(findingSiteNode->setConceptName(DSRCodedEntryValue("G-C036","SRT","Measurement Method")));
+      CHECK_COND(findingSiteNode->setCode("250157","99PMP","Source images resampled to resolution of segmentation"));
+      CHECK_EQUAL(tree.addContentItem(findingSiteNode, DSRTypes::AM_afterCurrent), findingSiteNode);
+    }
     DSRCodeTreeNode *findingSiteNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
     CHECK_COND(findingSiteNode->setConceptName(DSRCodedEntryValue("G-C0E3","SRT","Finding Site")));
     CHECK_COND(findingSiteNode->setCode(findingSite.getCodeValue(), findingSite.getCodingSchemeDesignator(), findingSite.getCodeMeaning()));
@@ -944,8 +951,14 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
       measurementNode->setValue(measurementValue);
       CHECK_EQUAL(tree.addContentItem(measurementNode, DSRTypes::AM_afterCurrent),measurementNode);
 
+      if(measurements[i].QuantityCode.getCodeMeaning() == "Volume"){
+        DSRCodeTreeNode *modNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
+        CHECK_COND(modNode->setConceptName(DSRCodedEntryValue("G-C036","SRT","Measurement Method")));
+        CHECK_COND(modNode->setCode("126030", "DCM", "Sum of segmented voxel volumes"));
+        CHECK_EQUAL(tree.addContentItem(modNode, DSRTypes::AM_belowCurrent), modNode);
+        tree.goUp();
+      }
       // TODO: add special case for Volume modifier
-
     }
   }
 }
