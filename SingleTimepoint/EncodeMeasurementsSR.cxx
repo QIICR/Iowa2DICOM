@@ -72,6 +72,7 @@ int getReferencedInstances(DcmDataset* dataset,
 struct QuantityUnitsPairType {
   DSRCodedEntryValue QuantityCode;
   DSRCodedEntryValue UnitsCode;
+  bool Derivation;
 };
 
 #include "../Common/SegmentAttributes.h"
@@ -81,6 +82,7 @@ struct ROIMeasurementType {
   DSRCodedEntryValue QuantityCode;
   DSRCodedEntryValue UnitsCode;
   std::string MeasurementValue;
+  bool Derivation;
 };
 
 // coded pairs of quantity/units
@@ -106,10 +108,10 @@ void AddImageLibrary(DSRDocumentTree&, std::vector<DcmDataset*>&);
 void AddImageLibraryEntryDescriptors(DSRDocumentTree&, DcmDataset*);
 void AddImageLibraryEntry(DSRDocumentTree&, DcmDataset*);
 
-OFCondition AddImageLibraryDescriptorFromTag(DSRDocumentTree&, DcmDataset*, const DcmTagKey, 
+OFCondition AddImageLibraryDescriptorFromTag(DSRDocumentTree&, DcmDataset*, const DcmTagKey,
     DSRTypes::E_RelationshipType,
     DSRTypes::E_ValueType,
-    DSRTypes::E_AddMode, 
+    DSRTypes::E_AddMode,
     const DSRCodedEntryValue);
 
 void PopulateMeasurementsGroup(DSRDocumentTree&, DSRContainerTreeNode*, DSRCodedEntryValue&, Measurements&,
@@ -192,7 +194,7 @@ int main(int argc, char** argv)
   AddLanguageOfContent(tree);
 
   // TODO: initialize to more meaningful values
-  if(deviceUID!=""){    
+  if(deviceUID!=""){
     AddDeviceObserverContext(tree, deviceUID.c_str(), deviceName == "" ? NULL : deviceName.c_str(),
         NULL, NULL, NULL);
   } else if(readerId!="") {
@@ -275,7 +277,7 @@ int main(int argc, char** argv)
         trackingIDStr = segmentAttributes[i].lookupAttribute("TrackingID");
       }
 
-      if(segmentAttributes[i].lookupAttribute("TrackingUID") == ""){      
+      if(segmentAttributes[i].lookupAttribute("TrackingUID") == ""){
         char trackingUID[128];
         // Warning: specific to Iowa dataset, to avoid errors
         std::cerr << "ERROR: TrackingUID is missing in the input!" << std::endl;
@@ -449,9 +451,9 @@ void AddImageLibrary(DSRDocumentTree &tree, std::vector<DcmDataset*> &imageDatas
   tree.goUp();
 }
 
-void AddImageLibraryDateDescriptor(DSRDocumentTree& dest, DcmDataset* src, const DcmTagKey tag, 
+void AddImageLibraryDateDescriptor(DSRDocumentTree& dest, DcmDataset* src, const DcmTagKey tag,
     DSRTypes::E_AddMode& mode, const DSRCodedEntryValue code){
-  
+
   DcmElement *element;
   OFString elementOFString;
 
@@ -465,8 +467,8 @@ void AddImageLibraryDateDescriptor(DSRDocumentTree& dest, DcmDataset* src, const
   }
 }
 
-OFCondition AddImageLibraryDescriptorFromTag(DSRDocumentTree& dest, DcmDataset* src, const DcmTagKey tag, 
-    DSRTypes::E_RelationshipType rel, DSRTypes::E_ValueType type, DSRTypes::E_AddMode mode, 
+OFCondition AddImageLibraryDescriptorFromTag(DSRDocumentTree& dest, DcmDataset* src, const DcmTagKey tag,
+    DSRTypes::E_RelationshipType rel, DSRTypes::E_ValueType type, DSRTypes::E_AddMode mode,
     const DSRCodedEntryValue code){
   DcmElement *element;
   OFString elementOFString;
@@ -537,7 +539,7 @@ void AddImageLibraryEntryDescriptors(DSRDocumentTree& tree, DcmDataset* dcm){
   // Patient Orientation - Row and Column separately
   if(dcm->findAndGetElement(DCM_PatientOrientation, element).good()){
 
-      element->getOFString(elementOFString, 0);      
+      element->getOFString(elementOFString, 0);
       DSRTextTreeNode *textNode = new DSRTextTreeNode(DSRTypes::RT_hasAcqContext);
       CHECK_COND(textNode->setConceptName(DSRCodedEntryValue("111044","DCM","Patient Orientation Row")));
       CHECK_COND(textNode->setValue(elementOFString));
@@ -561,50 +563,50 @@ void AddImageLibraryEntryDescriptors(DSRDocumentTree& tree, DcmDataset* dcm){
   DSRCodeTreeNode *modNode = new DSRCodeTreeNode(DSRTypes::RT_hasAcqContext);
   CHECK_COND(modNode->setConceptName(DSRCodedEntryValue("121139","DCM","Modality")));
   CHECK_COND(modNode->setCode("PT", "DCM","Positron emission tomography"));
-  CHECK_EQUAL(tree.addContentItem(modNode, DSRTypes::AM_belowCurrent), modNode);      
+  CHECK_EQUAL(tree.addContentItem(modNode, DSRTypes::AM_belowCurrent), modNode);
   addMode = DSRTypes::AM_afterCurrent;
 
   // Study date
-  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_StudyDate, 
+  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_StudyDate,
       DSRTypes::RT_hasAcqContext, DSRTypes::VT_Date, addMode,
       DSRCodedEntryValue("111060","DCM","Study Date")).good()){
     addMode = DSRTypes::AM_afterCurrent;
   }
-  
+
   // Study time
-  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_StudyTime, 
+  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_StudyTime,
       DSRTypes::RT_hasAcqContext, DSRTypes::VT_Time, addMode,
       DSRCodedEntryValue("111061","DCM","Study Time")).good()){
     addMode = DSRTypes::AM_afterCurrent;
   };
 
   // Content date
-  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_ContentDate, 
+  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_ContentDate,
       DSRTypes::RT_hasAcqContext, DSRTypes::VT_Date, addMode,
       DSRCodedEntryValue("111018","DCM","Content Date")).good()){
     addMode = DSRTypes::AM_afterCurrent;
   }
-  
+
   // Content time
-  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_ContentTime, 
+  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_ContentTime,
       DSRTypes::RT_hasAcqContext, DSRTypes::VT_Time, addMode,
       DSRCodedEntryValue("111019","DCM","Content Time")).good()){
     addMode = DSRTypes::AM_afterCurrent;
   }
-  
-  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_AcquisitionDate, 
+
+  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_AcquisitionDate,
       DSRTypes::RT_hasAcqContext, DSRTypes::VT_Date, addMode,
       DSRCodedEntryValue("126201","DCM","Acquisition Date")).good()){
     addMode = DSRTypes::AM_afterCurrent;
   }
-  
-  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_AcquisitionTime, 
+
+  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_AcquisitionTime,
       DSRTypes::RT_hasAcqContext, DSRTypes::VT_Time, addMode,
       DSRCodedEntryValue("126202","DCM","Acquisition Time")).good()){
     addMode = DSRTypes::AM_afterCurrent;
   }
 
-  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_FrameOfReferenceUID, 
+  if(AddImageLibraryDescriptorFromTag(tree, dcm, DCM_FrameOfReferenceUID,
       DSRTypes::RT_hasAcqContext, DSRTypes::VT_UIDRef, addMode,
       DSRCodedEntryValue("112227","DCM","Frame of Reference UID")).good()){
     addMode = DSRTypes::AM_afterCurrent;
@@ -642,7 +644,7 @@ void AddImageLibraryEntryDescriptors(DSRDocumentTree& tree, DcmDataset* dcm){
       DSRCodedEntryValue("123003","DCM","Radiopharmaceutical Start Date Time")).good()){
     addMode = DSRTypes::AM_afterCurrent;
   }
- 
+
   if(dcm->findAndGetElement(DCM_RadionuclideTotalDose, element).good()){
       element->getOFString(elementOFString, 0);
       tree.addContentItem(DSRTypes::RT_hasAcqContext,
@@ -715,7 +717,7 @@ void ReadMeasurements(std::string filename, std::vector<Measurements> &segmentMe
   std::vector<std::string> measurementCodes, measurementValues;
   f.getline(fLine, 10000);
   TokenizeString(fLine, measurementCodes, ",");
-  
+
   while(!f.eof()){
     f.getline(fLine, 10000);
     measurementValues.clear();
@@ -737,6 +739,7 @@ void ReadMeasurements(std::string filename, std::vector<Measurements> &segmentMe
       }
       m.QuantityCode = dict[mCode].QuantityCode;
       m.UnitsCode = dict[mCode].UnitsCode;
+      m.Derivation = dict[mCode].Derivation;
       m.MeasurementValue = mValue;
       segmentMeasurements[numSegments].push_back(m);
       numMeasurementsPerSegment++;
@@ -830,8 +833,8 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
   CHECK_COND(trackingUIDNode->setValue(trackingUID));
   CHECK_COND(trackingUIDNode->setConceptName(DSRCodedEntryValue("112040","DCM","Tracking Unique Identifier")));
   CHECK_EQUAL(tree.addContentItem(trackingUIDNode, DSRTypes::AM_afterCurrent),
-              trackingUIDNode);  
- 
+              trackingUIDNode);
+
   // Finding and finding site should be populated only if the code is initialized! Assuming
   // code 0 is not initialized (line 288)
   if(std::string(finding.getCodeValue().c_str()) != std::string("0")){
@@ -847,7 +850,7 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
   CHECK_EQUAL(tree.addContentItem(timepointNode, DSRTypes::AM_afterCurrent),timepointNode);
 
   /* debugging
-  if(0){ 
+  if(0){
     DcmElement *e;
     char* segInstanceUIDPtr;
     CHECK_COND(segDataset->findAndGetElement(DCM_SOPInstanceUID, e));
@@ -876,7 +879,7 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
     CHECK_EQUAL(tree.addContentItem(segNode, DSRTypes::AM_afterCurrent), segNode);
   }
 
-  
+
   {
     DSRUIDRefTreeNode *seriesUIDNode = new DSRUIDRefTreeNode(DSRTypes::RT_contains);
     //CHECK_COND(trackingUIDNode);
@@ -919,26 +922,19 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
   for(int i=0;i<measurements.size();i++){
     DSRNumTreeNode *measurementNode = new DSRNumTreeNode(DSRTypes::RT_contains);
 
-    if(std::string(measurements[i].UnitsCode.getCodeValue().c_str()) == "{SUVbw}g/ml"){
+    if(std::string(measurements[i].UnitsCode.getCodeValue().c_str()) == "{SUVbw}g/ml"
+        && measurements[i].Derivation){
       CHECK_COND(measurementNode->setConceptName(DSRCodedEntryValue("126401","DCM","SUVbw")));
       DSRNumericMeasurementValue measurementValue(measurements[i].MeasurementValue.c_str(),
                                                   measurements[i].UnitsCode);
       CHECK_COND(measurementNode->setValue(measurementValue));
       CHECK_EQUAL(tree.addContentItem(measurementNode, DSRTypes::AM_afterCurrent),measurementNode);
-
       DSRCodeTreeNode *modNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
-      // Special case for SAM_Background ...
-      if(std::string(measurements[i].QuantityCode.getCodeValue().c_str()) == "126038")
-
-        CHECK_COND(modNode->setConceptName(DSRCodedEntryValue("G-C036","SRT","Measurement Method")));
-      else
-        CHECK_COND(modNode->setConceptName(DSRCodedEntryValue("121401","DCM","Derivation")));
+      CHECK_COND(modNode->setConceptName(DSRCodedEntryValue("121401","DCM","Derivation")));
       DSRCodedEntryValue quantityCode = measurements[i].QuantityCode;
       CHECK_COND(modNode->setCode(quantityCode.getCodeValue(), quantityCode.getCodingSchemeDesignator(), quantityCode.getCodeMeaning()));
       CHECK_EQUAL(tree.addContentItem(modNode, DSRTypes::AM_belowCurrent), modNode);
       tree.goUp();
-      //std::cout << "Encoding only one measurement!" << std::endl;
-      //break;
     } else {
       DSRCodedEntryValue quantityCode = measurements[i].QuantityCode;
       CHECK_COND(measurementNode->setConceptName(quantityCode));
@@ -948,23 +944,10 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
       measurementNode->setValue(measurementValue);
       CHECK_EQUAL(tree.addContentItem(measurementNode, DSRTypes::AM_afterCurrent),measurementNode);
 
-      // special cases for quantities that start with Glycolysis or Percent, and for
-      // SAM
-      DSRCodedEntryValue quantity = measurements[i].QuantityCode;
-      if(std::string(quantity.getCodeValue().c_str()) == "126037" or
-         std::string(quantity.getCodeMeaning().c_str()).find("Glycolysis") == 0 or
-         std::string(quantity.getCodeMeaning().c_str()).find("Percent") == 0
-          )
-      {
-        DSRCodeTreeNode *modNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
-        CHECK_COND(modNode->setConceptName(DSRCodedEntryValue("G-C036","SRT","Measurement Method")));
-        CHECK_COND(modNode->setCode("126410", "DCM","SUV body weight calculation method"));
-        CHECK_EQUAL(tree.addContentItem(modNode, DSRTypes::AM_belowCurrent), modNode);      
-        tree.goUp();
-      }
+      // TODO: add special case for Volume modifier
+
     }
   }
-
 }
 
 void ReadQuantitiesDictionary(std::string filename, QuantitiesDictionaryType &dict){
@@ -982,6 +965,7 @@ void ReadQuantitiesDictionary(std::string filename, QuantitiesDictionaryType &di
     TokenizeString(fLine, tokens, ",");
     entry.QuantityCode = DSRCodedEntryValue(tokens[1].c_str(),tokens[2].c_str(),tokens[3].c_str());
     entry.UnitsCode = DSRCodedEntryValue(tokens[4].c_str(),tokens[5].c_str(),tokens[6].c_str());
+    entry.Derivation = bool(atoi(tokens[7].c_str()));
     dict[tokens[0]] = entry;
   }
 }

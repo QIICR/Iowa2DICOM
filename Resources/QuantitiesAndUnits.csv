@@ -1,23 +1,23 @@
-Quantity encoding,Quantity code,Quantity coding scheme designator,Quantity meaning,Units code,Units coding scheme designator,Units meaning
-Mean,R-00317,SRT,Mean,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight
-Variance,C1711260,UMLS,Variance,{SUVbw2}g2/ml2,UCUM,Standardized Uptake Value body weight squared
-Min,R-404FB,SRT,Minimum,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight
-Max,G-A437,SRT,Maximum,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight
-Volume,G-D705,SRT,Volume,ml,UCUM,Milliliter
-RMS,C2347976,UMLS,RMS,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight
-Peak,126031,DCM,Peak Value Within ROI,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight
-Median,R-00319,SRT,Median,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight
-First_Quartile,250137,99PMP,25th Percentile Value,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight
-Third_Quartile,250138,99PMP,75th Percentile Value,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight
-Upper_Adjacent,250139,99PMP,Upper Adjacent Value,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight
-Q1_Distribution,250140,99PMP,Percent Within First Quarter of Intensity Range,%,UCUM,Percent
-Q2_Distribution,250141,99PMP,Percent Within Second Quarter of Intensity Range,%,UCUM,Percent
-Q3_Distribution,250142,99PMP,Percent Within Third Quarter of Intensity Range,%,UCUM,Percent
-Q4_Distribution,250143,99PMP,Percent Within Fourth Quarter of Intensity Range,%,UCUM,Percent
-TLG,126033,DCM,Total Lesion Glycolysis,g,UCUM,Gram
-Glycolysis_Q1,250145,99PMP,Glycolysis Within First Quarter of Intensity Range,g,UCUM,Gram
-Glycolysis_Q2,250146,99PMP,Glycolysis Within Second Quarter of Intensity Range,g,UCUM,Gram
-Glycolysis_Q3,250147,99PMP,Glycolysis Within Third Quarter of Intensity Range,g,UCUM,Gram
-Glycolysis_Q4,250148,99PMP,Glycolysis Within Fourth Quarter of Intensity Range,g,UCUM,Gram
-SAM,126037,DCM,Standardized Added Metabolic Activity,g,UCUM,Gram
-SAM_Background,126038,DCM,Standardized Added Metabolic Activity Background,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight
+Quantity encoding,Quantity code,Quantity coding scheme designator,Quantity meaning,Units code,Units coding scheme designator,Units meaning,Derivation
+Mean,R-00317,SRT,Mean,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight,1
+Min,R-404FB,SRT,Minimum,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight,1
+Max,G-A437,SRT,Maximum,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight,1
+Volume,G-D705,SRT,Volume,ml,UCUM,Milliliter,0
+RMS,C2347976,UMLS,RMS,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight,1
+Peak,126031,DCM,Peak Value Within ROI,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight,1
+Median,R-00319,SRT,Median,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight,1
+First_Quartile,250137,99PMP,25th Percentile Value,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight,1
+Third_Quartile,250138,99PMP,75th Percentile Value,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight,1
+Upper_Adjacent,250139,99PMP,Upper Adjacent Value,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight,1
+Q1_Distribution,250140,99PMP,Percent Within First Quarter of Intensity Range,%,UCUM,Percent,0
+Q2_Distribution,250141,99PMP,Percent Within Second Quarter of Intensity Range,%,UCUM,Percent,0
+Q3_Distribution,250142,99PMP,Percent Within Third Quarter of Intensity Range,%,UCUM,Percent,0
+Q4_Distribution,250143,99PMP,Percent Within Fourth Quarter of Intensity Range,%,UCUM,Percent,0
+TLG,126033,DCM,Total Lesion Glycolysis,g,UCUM,Gram,0
+Glycolysis_Q1,250145,99PMP,Glycolysis Within First Quarter of Intensity Range,g,UCUM,Gram,0
+Glycolysis_Q2,250146,99PMP,Glycolysis Within Second Quarter of Intensity Range,g,UCUM,Gram,0
+Glycolysis_Q3,250147,99PMP,Glycolysis Within Third Quarter of Intensity Range,g,UCUM,Gram,0
+Glycolysis_Q4,250148,99PMP,Glycolysis Within Fourth Quarter of Intensity Range,g,UCUM,Gram,0
+SAM,126037,DCM,Standardized Added Metabolic Activity,g,UCUM,Gram,0
+SAM_Background,126038,DCM,Standardized Added Metabolic Activity Background,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight,0
+SD,R-10047,SRT,Standard Deviation,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight,1
