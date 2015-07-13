@@ -912,12 +912,16 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
 
   if(std::string(findingSite.getCodeValue().c_str()) != std::string("0")){
     // Special handling here since Aortic arch is segmented in CT, but measurements are done in resampled PET
+    // This was later decided to not include, since only one Measurement Method
+    // concept modifier is allowed
+    /*
     if(findingSite.getCodeMeaning() == "Aortic arch"){
       DSRCodeTreeNode *findingSiteNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
       CHECK_COND(findingSiteNode->setConceptName(DSRCodedEntryValue("G-C036","SRT","Measurement Method")));
       CHECK_COND(findingSiteNode->setCode("250157","99PMP","Source images resampled to resolution of segmentation"));
       CHECK_EQUAL(tree.addContentItem(findingSiteNode, DSRTypes::AM_afterCurrent), findingSiteNode);
     }
+    */
     DSRCodeTreeNode *findingSiteNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
     CHECK_COND(findingSiteNode->setConceptName(DSRCodedEntryValue("G-C0E3","SRT","Finding Site")));
     CHECK_COND(findingSiteNode->setCode(findingSite.getCodeValue(), findingSite.getCodingSchemeDesignator(), findingSite.getCodeMeaning()));
