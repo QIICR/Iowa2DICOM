@@ -20,4 +20,4 @@ Glycolysis_Q3,250147,99PMP,Glycolysis Within Third Quarter of Intensity Range,g,
 Glycolysis_Q4,250148,99PMP,Glycolysis Within Fourth Quarter of Intensity Range,g,UCUM,Gram,0
 SAM,126037,DCM,Standardized Added Metabolic Activity,g,UCUM,Gram,0
 SAM_Background,126038,DCM,Standardized Added Metabolic Activity Background,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight,0
-SD,R-10047,SRT,Standard Deviation,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight,1
+Std_Deviation,R-10047,SRT,Standard Deviation,{SUVbw}g/ml,UCUM,Standardized Uptake Value body weight,1
