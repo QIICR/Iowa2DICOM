@@ -62,6 +62,15 @@ static OFLogger logger = OFLog::getLogger("qiicr.apps.iowa1");
         } \
     } while (0)
 
+/** Check if return value is non-zero.
+*     */
+#define CHECK_NONZERO(ret) \
+  do { \
+    if (!(ret)) { \
+      OFLOG_FATAL(logger, "(" << (ret) << ") should be non-zero in " << __FILE__ << ":" << __LINE__ ); \
+      throw -2; \
+    } \
+  } while (0)
 
 #define WARN_IF_ERROR(FunctionCall,Message) if(!FunctionCall) std::cout << "Return value is 0 for " << Message << std::endl;
 
@@ -208,7 +217,7 @@ int main(int argc, char** argv)
     DSRCodeTreeNode *procedureCode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
     CHECK_COND(procedureCode->setConceptName(DSRCodedEntryValue("121058","DCM","Procedure reported")));
     CHECK_COND(procedureCode->setCode("44139-4","LN","PET whole body"));
-    CHECK_EQUAL(tree.addContentItem(procedureCode, DSRTypes::AM_afterCurrent), procedureCode);
+    CHECK_COND(tree.addContentItem(procedureCode, DSRTypes::AM_afterCurrent));
   }
 
   AddImageLibrary(tree, petDatasets);
@@ -223,7 +232,7 @@ int main(int argc, char** argv)
   {
     DSRContainerTreeNode *measurementsContainer = new DSRContainerTreeNode(DSRTypes::RT_contains);
     CHECK_COND(measurementsContainer->setConceptName(DSRCodedEntryValue("126010","DCM","Imaging Measurements")));
-    CHECK_EQUAL(tree.addContentItem(measurementsContainer, DSRTypes::AM_afterCurrent), measurementsContainer);
+    CHECK_COND(tree.addContentItem(measurementsContainer, DSRTypes::AM_afterCurrent));
 
     // read meta-information for the segmentation file
     std::vector<SegmentAttributes> segmentAttributes;
@@ -260,7 +269,7 @@ int main(int argc, char** argv)
       DSRContainerTreeNode *measurementsGroup = new DSRContainerTreeNode(DSRTypes::RT_contains);
       CHECK_COND(measurementsGroup->setConceptName(DSRCodedEntryValue("125007","DCM","Measurement Group")));
       CHECK_COND(measurementsGroup->setTemplateIdentification("1411","DCMR"));
-      CHECK_EQUAL(tree.addContentItem(measurementsGroup, DSRTypes::AM_belowCurrent), measurementsGroup);
+      CHECK_COND(tree.addContentItem(measurementsGroup, DSRTypes::AM_belowCurrent));
 
       // pass segment number here as well - assign it to be the same as the
       // line number in the measurements file
@@ -344,7 +353,7 @@ int main(int argc, char** argv)
 void InitializeRootNode(DSRDocumentTree &tree){
 
   DSRContainerTreeNode *rootNode = new DSRContainerTreeNode(DSRTypes::RT_isRoot);
-  CHECK_EQUAL(tree.addContentItem(rootNode), rootNode);
+  CHECK_COND(tree.addContentItem(rootNode, DSRTypes::AM_afterCurrent));
 
   CHECK_COND(rootNode->setTemplateIdentification("1500", "DCMR"));
   rootNode->setConceptName(DSRCodedEntryValue("126000","DCM","Imaging Measurement Report"));
@@ -358,13 +367,13 @@ void AddLanguageOfContent(DSRDocumentTree &tree){
   langNode->setConceptName(DSRCodedEntryValue("121049", "DCM", "Language of Content Item and Descendants"));
   langNode->setCode("eng", "RFC3066", "English");
 
-  CHECK_EQUAL(tree.addContentItem(langNode, DSRTypes::AM_belowCurrent), langNode);
+  CHECK_COND(tree.addContentItem(langNode, DSRTypes::AM_belowCurrent));
 
   DSRCodeTreeNode *countryNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
   CHECK_COND(countryNode->setConceptName(DSRCodedEntryValue("121046", "DCM", "Country of Language")));
   CHECK_COND(countryNode->setCode("US","ISO3166_1","United States"));
 
-  CHECK_EQUAL(tree.addContentItem(countryNode, DSRTypes::AM_belowCurrent), countryNode);
+  CHECK_COND(tree.addContentItem(countryNode, DSRTypes::AM_belowCurrent));
 
   tree.goUp();
 }
@@ -379,40 +388,40 @@ void AddDeviceObserverContext(DSRDocumentTree &tree,
     DSRCodeTreeNode *observerTypeNode = new DSRCodeTreeNode(DSRTypes::RT_hasObsContext);
     CHECK_COND(observerTypeNode->setConceptName(DSRCodedEntryValue("121005","DCM","Observer Type")));
     CHECK_COND(observerTypeNode->setCode("121007","DCM","Device"));
-    CHECK_EQUAL(tree.addContentItem(observerTypeNode, DSRTypes::AM_afterCurrent), observerTypeNode);
+    CHECK_COND(tree.addContentItem(observerTypeNode, DSRTypes::AM_afterCurrent));
 
 
     DSRUIDRefTreeNode *observerUIDNode = new DSRUIDRefTreeNode(DSRTypes::RT_hasObsContext);
     CHECK_COND(observerUIDNode->setConceptName(DSRCodedEntryValue("121012","DCM","Device Observer UID")));
     CHECK_COND(observerUIDNode->setValue(deviceObserverUID));
-    CHECK_EQUAL(tree.addContentItem(observerUIDNode, DSRTypes::AM_afterCurrent), observerUIDNode);
+    CHECK_COND(tree.addContentItem(observerUIDNode, DSRTypes::AM_afterCurrent));
 
     if(deviceObserverName){
       DSRTextTreeNode *observerNameNode = new DSRTextTreeNode(DSRTypes::RT_hasObsContext);
       CHECK_COND(observerNameNode->setConceptName(DSRCodedEntryValue("121013","DCM","Device Observer Name")));
       CHECK_COND(observerNameNode->setValue(deviceObserverName));
-      CHECK_EQUAL(tree.addContentItem(observerNameNode, DSRTypes::AM_afterCurrent), observerNameNode);
+      CHECK_COND(tree.addContentItem(observerNameNode, DSRTypes::AM_afterCurrent));
     }
 
     if(deviceObserverManufacturer){
       DSRTextTreeNode *observerManufacturerNode = new DSRTextTreeNode(DSRTypes::RT_hasObsContext);
       CHECK_COND(observerManufacturerNode->setConceptName(DSRCodedEntryValue("121014","DCM","Device Observer Manufacturer")));
       CHECK_COND(observerManufacturerNode->setValue(deviceObserverManufacturer));
-      CHECK_EQUAL(tree.addContentItem(observerManufacturerNode, DSRTypes::AM_afterCurrent), observerManufacturerNode);
+      CHECK_COND(tree.addContentItem(observerManufacturerNode, DSRTypes::AM_afterCurrent));
     }
 
     if(deviceObserverModelName){
       DSRTextTreeNode *observerModelNameNode = new DSRTextTreeNode(DSRTypes::RT_hasObsContext);
       CHECK_COND(observerModelNameNode->setConceptName(DSRCodedEntryValue("121015","DCM","Device Observer Model Name")));
       CHECK_COND(observerModelNameNode->setValue(deviceObserverModelName));
-      CHECK_EQUAL(tree.addContentItem(observerModelNameNode, DSRTypes::AM_afterCurrent), observerModelNameNode);
+      CHECK_COND(tree.addContentItem(observerModelNameNode, DSRTypes::AM_afterCurrent));
     }
 
     if(deviceObserverSerialNumber){
       DSRTextTreeNode *observerSerialNumberNode = new DSRTextTreeNode(DSRTypes::RT_hasObsContext);
       CHECK_COND(observerSerialNumberNode->setConceptName(DSRCodedEntryValue("121016","DCM","Device Observer Serial Number")));
       CHECK_COND(observerSerialNumberNode->setValue(deviceObserverSerialNumber));
-      CHECK_EQUAL(tree.addContentItem(observerSerialNumberNode, DSRTypes::AM_afterCurrent), observerSerialNumberNode);
+      CHECK_COND(tree.addContentItem(observerSerialNumberNode, DSRTypes::AM_afterCurrent));
     }
 }
 
@@ -422,24 +431,24 @@ void AddPersonObserverContext(DSRDocumentTree &tree,
     DSRCodeTreeNode *observerTypeNode = new DSRCodeTreeNode(DSRTypes::RT_hasObsContext);
     CHECK_COND(observerTypeNode->setConceptName(DSRCodedEntryValue("121005","DCM","Observer Type")));
     CHECK_COND(observerTypeNode->setCode("121006","DCM","Person"));
-    CHECK_EQUAL(tree.addContentItem(observerTypeNode, DSRTypes::AM_afterCurrent), observerTypeNode);
+    CHECK_COND(tree.addContentItem(observerTypeNode, DSRTypes::AM_afterCurrent));
 
 
     DSRPNameTreeNode *observerNameNode = new DSRPNameTreeNode(DSRTypes::RT_hasObsContext);
     CHECK_COND(observerNameNode->setConceptName(DSRCodedEntryValue("121008","DCM","Person Observer Name")));
     CHECK_COND(observerNameNode->setValue(personObserverName));
-    CHECK_EQUAL(tree.addContentItem(observerNameNode, DSRTypes::AM_afterCurrent), observerNameNode);
+    CHECK_COND(tree.addContentItem(observerNameNode, DSRTypes::AM_afterCurrent));
 }
 
 void AddImageLibrary(DSRDocumentTree &tree, std::vector<DcmDataset*> &imageDatasets){
   DSRContainerTreeNode *libContainerNode = new DSRContainerTreeNode(DSRTypes::RT_contains);
   CHECK_COND(libContainerNode->setConceptName(DSRCodedEntryValue("111028", "DCM", "Image Library")));
   CHECK_COND(libContainerNode->setTemplateIdentification("1600","DCMR"));
-  CHECK_EQUAL(tree.addContentItem(libContainerNode), libContainerNode);
+  CHECK_COND(tree.addContentItem(libContainerNode));
 
   DSRContainerTreeNode *libGroupNode = new DSRContainerTreeNode(DSRTypes::RT_contains);
   CHECK_COND(libGroupNode->setConceptName(DSRCodedEntryValue("126200", "DCM", "Image Library Group")));
-  CHECK_EQUAL(tree.addContentItem(libGroupNode, DSRTypes::AM_belowCurrent), libGroupNode);
+  CHECK_COND(tree.addContentItem(libGroupNode, DSRTypes::AM_belowCurrent));
 
   // factor out image library entry descriptors
   AddImageLibraryEntryDescriptors(tree, imageDatasets[0]);
@@ -459,9 +468,9 @@ void AddImageLibraryDateDescriptor(DSRDocumentTree& dest, DcmDataset* src, const
 
   if(src->findAndGetElement(tag, element).good()){
       element->getOFString(elementOFString, 0);
-      size_t nodeID = dest.addContentItem(DSRTypes::RT_hasAcqContext,
+      CHECK_NONZERO(dest.addContentItem(DSRTypes::RT_hasAcqContext,
                                                   DSRTypes::VT_Date,
-                                                  mode);
+                                                  mode));
       dest.getCurrentContentItem().setConceptName(code);
       dest.getCurrentContentItem().setStringValue(elementOFString.c_str());
   }
@@ -476,7 +485,7 @@ OFCondition AddImageLibraryDescriptorFromTag(DSRDocumentTree& dest, DcmDataset* 
   if(src->findAndGetElement(tag, element).good()){
       element->getOFString(elementOFString, 0);
       std::cout << "Tag as string: " << elementOFString << std::endl;
-      size_t nodeID = dest.addContentItem(rel,type,mode);
+      CHECK_NONZERO(dest.addContentItem(rel,type,mode));
       dest.getCurrentContentItem().setConceptName(code);
       if(!dest.getCurrentContentItem().setStringValue(elementOFString.c_str()).good())
         std::cout << "Failed to set value " << elementOFString << " from tag key " << tag << std::endl;
@@ -504,7 +513,7 @@ void AddImageLibraryEntryDescriptors(DSRDocumentTree& tree, DcmDataset* dcm){
      CHECK_COND(codeNode->setConceptName(DSRCodedEntryValue("111027","DCM","Image Laterality")));
      CHECK_COND(codeNode->setCode(codedValue.getCodeValue(), codedValue.getCodingSchemeDesignator(),
                                codedValue.getCodeMeaning()));
-     CHECK_EQUAL(tree.addContentItem(codeNode, addMode), codeNode);
+     CHECK_COND(tree.addContentItem(codeNode, addMode));
      addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
   }
 
@@ -518,7 +527,7 @@ void AddImageLibraryEntryDescriptors(DSRDocumentTree& tree, DcmDataset* dcm){
     CHECK_COND(codeNode->setConceptName(DSRCodedEntryValue("111031","DCM","Image View")));
     CHECK_COND(codeNode->setCode(codedValue.getCodeValue(), codedValue.getCodingSchemeDesignator(),
                               codedValue.getCodeMeaning()));
-    CHECK_EQUAL(tree.addContentItem(codeNode, addMode), codeNode);
+    CHECK_COND(tree.addContentItem(codeNode, addMode));
 
     addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
 
@@ -529,7 +538,7 @@ void AddImageLibraryEntryDescriptors(DSRDocumentTree& tree, DcmDataset* dcm){
       CHECK_COND(codeNode->setConceptName(DSRCodedEntryValue("111032","DCM","Image View Modifier")));
       CHECK_COND(codeNode->setCode(codedValue.getCodeValue(), codedValue.getCodingSchemeDesignator(),
                                 codedValue.getCodeMeaning()));
-      CHECK_EQUAL(tree.addContentItem(codeNode, addMode), codeNode);
+      CHECK_COND(tree.addContentItem(codeNode, addMode));
 
       tree.goUp();
     }
@@ -543,7 +552,7 @@ void AddImageLibraryEntryDescriptors(DSRDocumentTree& tree, DcmDataset* dcm){
       DSRTextTreeNode *textNode = new DSRTextTreeNode(DSRTypes::RT_hasAcqContext);
       CHECK_COND(textNode->setConceptName(DSRCodedEntryValue("111044","DCM","Patient Orientation Row")));
       CHECK_COND(textNode->setValue(elementOFString));
-      CHECK_EQUAL(tree.addContentItem(textNode, addMode), textNode);
+      CHECK_COND(tree.addContentItem(textNode, addMode));
       addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
 
       tree.getCurrentContentItem().setConceptName(
@@ -554,7 +563,7 @@ void AddImageLibraryEntryDescriptors(DSRDocumentTree& tree, DcmDataset* dcm){
       textNode = new DSRTextTreeNode(DSRTypes::RT_hasAcqContext);
       CHECK_COND(textNode->setConceptName(DSRCodedEntryValue("111043","DCM","Patient Orientation Column")));
       CHECK_COND(textNode->setValue(elementOFString));
-      CHECK_EQUAL(tree.addContentItem(textNode, addMode), textNode);
+      CHECK_COND(tree.addContentItem(textNode, addMode));
   }
 
   // Modality
@@ -563,7 +572,7 @@ void AddImageLibraryEntryDescriptors(DSRDocumentTree& tree, DcmDataset* dcm){
   DSRCodeTreeNode *modNode = new DSRCodeTreeNode(DSRTypes::RT_hasAcqContext);
   CHECK_COND(modNode->setConceptName(DSRCodedEntryValue("121139","DCM","Modality")));
   CHECK_COND(modNode->setCode("PT", "DCM","Positron emission tomography"));
-  CHECK_EQUAL(tree.addContentItem(modNode, DSRTypes::AM_belowCurrent), modNode);
+  CHECK_COND(tree.addContentItem(modNode, DSRTypes::AM_belowCurrent));
   addMode = DSRTypes::AM_afterCurrent;
 
   // Study date
@@ -614,9 +623,9 @@ void AddImageLibraryEntryDescriptors(DSRDocumentTree& tree, DcmDataset* dcm){
 
   if(dcm->findAndGetElement(DCM_Rows, element).good()){
       element->getOFString(elementOFString, 0);
-      tree.addContentItem(DSRTypes::RT_hasAcqContext,
+      CHECK_NONZERO(tree.addContentItem(DSRTypes::RT_hasAcqContext,
                                     DSRTypes::VT_Num,
-                                    addMode);
+                                    addMode));
       addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
 
       tree.getCurrentContentItem().setConceptName(
@@ -627,9 +636,9 @@ void AddImageLibraryEntryDescriptors(DSRDocumentTree& tree, DcmDataset* dcm){
 
       dcm->findAndGetElement(DCM_Columns, element);
       element->getOFString(elementOFString, 0);
-      tree.addContentItem(DSRTypes::RT_hasAcqContext,
+      CHECK_NONZERO(tree.addContentItem(DSRTypes::RT_hasAcqContext,
                                     DSRTypes::VT_Num,
-                                    DSRTypes::AM_afterCurrent);
+                                    DSRTypes::AM_afterCurrent));
       tree.getCurrentContentItem().setConceptName(
                   DSRCodedEntryValue("110911","DCM","Pixel Data Columns"));
       tree.getCurrentContentItem().setNumericValue(
@@ -647,9 +656,9 @@ void AddImageLibraryEntryDescriptors(DSRDocumentTree& tree, DcmDataset* dcm){
 
   if(dcm->findAndGetElement(DCM_RadionuclideTotalDose, element).good()){
       element->getOFString(elementOFString, 0);
-      tree.addContentItem(DSRTypes::RT_hasAcqContext,
+      CHECK_NONZERO(tree.addContentItem(DSRTypes::RT_hasAcqContext,
                                     DSRTypes::VT_Num,
-                                    addMode);
+                                    addMode));
       addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
 
       tree.getCurrentContentItem().setConceptName(
@@ -662,9 +671,9 @@ void AddImageLibraryEntryDescriptors(DSRDocumentTree& tree, DcmDataset* dcm){
   // Warning: hard-coded, specific to Iowa use case, not available in the
   // source PET dataset!
   {
-      tree.addContentItem(DSRTypes::RT_hasAcqContext,
+      CHECK_NONZERO(tree.addContentItem(DSRTypes::RT_hasAcqContext,
                                     DSRTypes::VT_Code,
-                                    addMode);
+                                    addMode));
       addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
 
       tree.getCurrentContentItem().setConceptName(
@@ -673,9 +682,9 @@ void AddImageLibraryEntryDescriptors(DSRDocumentTree& tree, DcmDataset* dcm){
   }
 
   {
-      tree.addContentItem(DSRTypes::RT_hasAcqContext,
+      CHECK_NONZERO(tree.addContentItem(DSRTypes::RT_hasAcqContext,
                                     DSRTypes::VT_Code,
-                                    addMode);
+                                    addMode));
       addMode = addMode == DSRTypes::AM_belowCurrent ? DSRTypes::AM_afterCurrent : addMode;
 
       tree.getCurrentContentItem().setConceptName(
@@ -700,7 +709,7 @@ void AddImageLibraryEntry(DSRDocumentTree &tree, DcmDataset *dcm){
     classUIDElt->getOFString(classUIDStr, 0);
     instanceUIDElt->getOFString(instanceUIDStr, 0);
     CHECK_COND(imageNode->setReference(classUIDStr, instanceUIDStr));
-    CHECK_EQUAL(tree.addContentItem(imageNode, DSRTypes::AM_afterCurrent), imageNode);
+    CHECK_COND(tree.addContentItem(imageNode, DSRTypes::AM_afterCurrent));
   }
 }
 
@@ -820,20 +829,19 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
   DSRTextTreeNode *sessionNode = new DSRTextTreeNode(DSRTypes::RT_hasObsContext);
   CHECK_COND(sessionNode->setConceptName(DSRCodedEntryValue("C67447","NCIt","Activity Session")));
   CHECK_COND(sessionNode->setValue(sessionId));
-  CHECK_EQUAL(tree.addContentItem(sessionNode, DSRTypes::AM_belowCurrent),sessionNode);
+  CHECK_COND(tree.addContentItem(sessionNode, DSRTypes::AM_belowCurrent));
 
   DSRTextTreeNode *trackingIDNode = new DSRTextTreeNode(DSRTypes::RT_hasObsContext);
   CHECK_COND(trackingIDNode->setConceptName(DSRCodedEntryValue("112039","DCM","Tracking Identifier")));
   CHECK_COND(trackingIDNode->setValue(trackingID));
-  CHECK_EQUAL(tree.addContentItem(trackingIDNode,
-                                  DSRTypes::AM_afterCurrent),trackingIDNode);
+  CHECK_COND(tree.addContentItem(trackingIDNode,
+                                  DSRTypes::AM_afterCurrent));
 
   DSRUIDRefTreeNode *trackingUIDNode = new DSRUIDRefTreeNode(DSRTypes::RT_hasObsContext);
   std::cout << "Setting tracking UID: " << trackingUID << std::endl;
   CHECK_COND(trackingUIDNode->setValue(trackingUID));
   CHECK_COND(trackingUIDNode->setConceptName(DSRCodedEntryValue("112040","DCM","Tracking Unique Identifier")));
-  CHECK_EQUAL(tree.addContentItem(trackingUIDNode, DSRTypes::AM_afterCurrent),
-              trackingUIDNode);
+  CHECK_COND(tree.addContentItem(trackingUIDNode, DSRTypes::AM_afterCurrent));
 
   // Finding and finding site should be populated only if the code is initialized! Assuming
   // code 0 is not initialized (line 288)
@@ -841,13 +849,13 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
     DSRCodeTreeNode *findingNode = new DSRCodeTreeNode(DSRTypes::RT_contains);
     CHECK_COND(findingNode->setConceptName(DSRCodedEntryValue("121071","DCM","Finding")));
     CHECK_COND(findingNode->setCode(finding.getCodeValue(), finding.getCodingSchemeDesignator(), finding.getCodeMeaning()));
-    CHECK_EQUAL(tree.addContentItem(findingNode, DSRTypes::AM_afterCurrent), findingNode);
+    CHECK_COND(tree.addContentItem(findingNode, DSRTypes::AM_afterCurrent));
   }
 
   DSRTextTreeNode *timepointNode = new DSRTextTreeNode(DSRTypes::RT_hasObsContext);
   CHECK_COND(timepointNode->setConceptName(DSRCodedEntryValue("C2348792","UMLS","Time Point")));
   CHECK_COND(timepointNode->setValue(timePointId));
-  CHECK_EQUAL(tree.addContentItem(timepointNode, DSRTypes::AM_afterCurrent),timepointNode);
+  CHECK_COND(tree.addContentItem(timepointNode, DSRTypes::AM_afterCurrent));
 
   /* debugging
   if(0){
@@ -860,7 +868,7 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
     DSRImageReferenceValue refValue(UID_SegmentationStorage, segInstanceUIDPtr);
     //refValue.getSegmentList().putString("1"); // TODO: this will need to be fixed - refer to the actual segments in the seg object
     refValue.getSegmentList().addItem(1); // TODO: this will need to be fixed - refer to the actual segments in the seg object
-    tree.addContentItem(DSRTypes::RT_contains, DSRTypes::VT_Image);
+    CHECK_COND(tree.addContentItem(DSRTypes::RT_contains, DSRTypes::VT_Image));
     tree.getCurrentContentItem().setConceptName(DSRCodedEntryValue("121191","DCM","Referenced Segment"));
     tree.getCurrentContentItem().setImageReference(refValue);
   } */
@@ -876,7 +884,7 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
     DSRImageReferenceValue refValue(UID_SegmentationStorage, segInstanceUIDPtr);
     refValue.getSegmentList().addItem(segmentNumber);
     CHECK_COND(segNode->setValue(refValue));
-    CHECK_EQUAL(tree.addContentItem(segNode, DSRTypes::AM_afterCurrent), segNode);
+    CHECK_COND(tree.addContentItem(segNode, DSRTypes::AM_afterCurrent));
   }
 
 
@@ -889,8 +897,7 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
     e->getString(seriesInstanceUID);
     CHECK_COND(seriesUIDNode->setValue(seriesInstanceUID));
     CHECK_COND(seriesUIDNode->setConceptName(DSRCodedEntryValue("121232","DCM","Source series for image segmentation")));
-    CHECK_EQUAL(tree.addContentItem(seriesUIDNode, DSRTypes::AM_afterCurrent),
-                seriesUIDNode);
+    CHECK_COND(tree.addContentItem(seriesUIDNode, DSRTypes::AM_afterCurrent));
   }
 
   {
@@ -902,13 +909,13 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
     DSRCompositeReferenceValue refValue(UID_RealWorldValueMappingStorage, rwvmInstanceUIDPtr);
     rwvmNode->setValue(refValue);
     CHECK_COND(rwvmNode->setConceptName(DSRCodedEntryValue("126100","DCM","Real World Value Map used for measurement")));
-    CHECK_EQUAL(tree.addContentItem(rwvmNode, DSRTypes::AM_afterCurrent), rwvmNode);
+    CHECK_COND(tree.addContentItem(rwvmNode, DSRTypes::AM_afterCurrent));
   }
 
   DSRCodeTreeNode *modNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
   CHECK_COND(modNode->setConceptName(DSRCodedEntryValue("G-C036","SRT","Measurement Method")));
   CHECK_COND(modNode->setCode("126410", "DCM","SUV body weight calculation method"));
-  CHECK_EQUAL(tree.addContentItem(modNode, DSRTypes::AM_afterCurrent), modNode);
+  CHECK_COND(tree.addContentItem(modNode, DSRTypes::AM_afterCurrent));
 
   if(std::string(findingSite.getCodeValue().c_str()) != std::string("0")){
     // Special handling here since Aortic arch is segmented in CT, but measurements are done in resampled PET
@@ -919,13 +926,13 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
       DSRCodeTreeNode *findingSiteNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
       CHECK_COND(findingSiteNode->setConceptName(DSRCodedEntryValue("G-C036","SRT","Measurement Method")));
       CHECK_COND(findingSiteNode->setCode("250157","99PMP","Source images resampled to resolution of segmentation"));
-      CHECK_EQUAL(tree.addContentItem(findingSiteNode, DSRTypes::AM_afterCurrent), findingSiteNode);
+      CHECK_COND(tree.addContentItem(findingSiteNode, DSRTypes::AM_afterCurrent));
     }
     */
     DSRCodeTreeNode *findingSiteNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
     CHECK_COND(findingSiteNode->setConceptName(DSRCodedEntryValue("G-C0E3","SRT","Finding Site")));
     CHECK_COND(findingSiteNode->setCode(findingSite.getCodeValue(), findingSite.getCodingSchemeDesignator(), findingSite.getCodeMeaning()));
-    CHECK_EQUAL(tree.addContentItem(findingSiteNode, DSRTypes::AM_afterCurrent), findingSiteNode);
+    CHECK_COND(tree.addContentItem(findingSiteNode, DSRTypes::AM_afterCurrent));
   }
 
   std::cout << "Group has " << measurements.size() << " measurements" << std::endl;
@@ -939,12 +946,12 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
       DSRNumericMeasurementValue measurementValue(measurements[i].MeasurementValue.c_str(),
                                                   measurements[i].UnitsCode);
       CHECK_COND(measurementNode->setValue(measurementValue));
-      CHECK_EQUAL(tree.addContentItem(measurementNode, DSRTypes::AM_afterCurrent),measurementNode);
+      CHECK_COND(tree.addContentItem(measurementNode, DSRTypes::AM_afterCurrent));
       DSRCodeTreeNode *modNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
       CHECK_COND(modNode->setConceptName(DSRCodedEntryValue("121401","DCM","Derivation")));
       DSRCodedEntryValue quantityCode = measurements[i].QuantityCode;
       CHECK_COND(modNode->setCode(quantityCode.getCodeValue(), quantityCode.getCodingSchemeDesignator(), quantityCode.getCodeMeaning()));
-      CHECK_EQUAL(tree.addContentItem(modNode, DSRTypes::AM_belowCurrent), modNode);
+      CHECK_COND(tree.addContentItem(modNode, DSRTypes::AM_belowCurrent));
       tree.goUp();
     } else {
       DSRCodedEntryValue quantityCode = measurements[i].QuantityCode;
@@ -953,13 +960,13 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
       DSRNumericMeasurementValue measurementValue(measurements[i].MeasurementValue.c_str(),
                                                   measurements[i].UnitsCode);
       measurementNode->setValue(measurementValue);
-      CHECK_EQUAL(tree.addContentItem(measurementNode, DSRTypes::AM_afterCurrent),measurementNode);
+      CHECK_COND(tree.addContentItem(measurementNode, DSRTypes::AM_afterCurrent));
 
       if(measurements[i].QuantityCode.getCodeMeaning() == "Volume"){
         DSRCodeTreeNode *modNode = new DSRCodeTreeNode(DSRTypes::RT_hasConceptMod);
         CHECK_COND(modNode->setConceptName(DSRCodedEntryValue("G-C036","SRT","Measurement Method")));
         CHECK_COND(modNode->setCode("126030", "DCM", "Sum of segmented voxel volumes"));
-        CHECK_EQUAL(tree.addContentItem(modNode, DSRTypes::AM_belowCurrent), modNode);
+        CHECK_COND(tree.addContentItem(modNode, DSRTypes::AM_belowCurrent));
         tree.goUp();
       }
       // TODO: add special case for Volume modifier
