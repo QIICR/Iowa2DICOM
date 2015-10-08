@@ -4,6 +4,7 @@
 #include "dcmtk/ofstd/ofconapp.h"
 #include "dcmtk/dcmseg/segdoc.h"
 #include "dcmtk/dcmseg/segment.h"
+#include "dcmtk/dcmseg/segutils.h"
 #include "dcmtk/dcmfg/fginterface.h"
 #include "dcmtk/dcmiod/iodutil.h"
 #include "dcmtk/dcmiod/modmultiframedimension.h"
@@ -155,6 +156,8 @@ int main(int argc, char *argv[])
   // ImagePositionPatient, set non-zero pixels to the segment number. Notify
   // about pixels that are initialized more than once.
   std::vector<unsigned> segmentPixelCnt(100);
+    
+  DcmIODTypes::Frame *unpackedFrame = NULL;
 
   for(int frameId=0;frameId<fgInterface.getNumberOfFrames();frameId++){
     const DcmIODTypes::Frame *frame = segdoc->getFrame(frameId);
@@ -210,12 +213,19 @@ int main(int argc, char *argv[])
 
     unsigned slice = frameOriginIndex[2];
 
+    if(segdoc->getSegmentationType() == DcmSegTypes::ST_BINARY)
+      unpackedFrame = DcmSegUtils::unpackBinaryFrame(frame, imageSize[0], imageSize[1]);
+    else
+      unpackedFrame = new DcmIODTypes::Frame(*frame);
+
     // initialize slice with the frame content
     for(int row=0;row<imageSize[1];row++){
       for(int col=0;col<imageSize[0];col++){
         ImageType::PixelType pixel;
         unsigned bitCnt = row*imageSize[0]+col;
-        pixel = (frame->pixData[bitCnt/8] >> (bitCnt%8)) & 1;
+        //pixel = (frame->pixData[bitCnt/8] >> (bitCnt%8)) & 1;
+        pixel = unpackedFrame->pixData[bitCnt];
+
         if(pixel!=0){
           segmentPixelCnt[segmentId]++;
           //std::cout << segmentId << ": " << segmentPixelCnt[segmentId] << std::endl;
@@ -235,8 +245,10 @@ int main(int argc, char *argv[])
         }
       }
     }
-  }
 
+    if(unpackedFrame != NULL)
+      delete unpackedFrame;
+  }
 
   std::cout << "Number of pixels for segments: " << std::endl;
   for(unsigned i=0;i<segmentPixelCnt.size();i++){
