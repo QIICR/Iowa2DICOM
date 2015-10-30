@@ -253,7 +253,7 @@ int main(int argc, char *argv[])
     fileNameSStream << outputDirName << "/" << sI->first << ".nrrd";
     WriterType::Pointer writer = WriterType::New();
     writer->SetFileName(fileNameSStream.str());
-    writer->SetInput(segImage);
+    writer->SetInput(sI->second);
     writer->SetUseCompression(1);
     writer->Update();
   }
