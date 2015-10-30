@@ -26,6 +26,7 @@
 #include "dcmtk/ofstd/ofstdinc.h"
 
 #include <sstream>
+#include <map>
 
 #ifdef WITH_ZLIB
 #include <zlib.h>                     /* for zlibVersion() */
@@ -36,6 +37,7 @@
 #include <itkLabelImageToLabelMapFilter.h>
 #include <itkImageRegionConstIterator.h>
 #include <itkChangeInformationImageFilter.h>
+#include <itkImageDuplicator.h>
 
 
 #include "framesorter.h"
@@ -150,13 +152,14 @@ int main(int argc, char *argv[])
   segImage->SetDirection(dir);
   segImage->Allocate();
   segImage->FillBuffer(0);
-  segImage->FillBuffer(0);
+
+  // these are images corresponding to the individual segments
+  std::map<unsigned,ImageType::Pointer> segment2image;
 
   // Iterate over frames, find the matching slice for each of the frames based on
   // ImagePositionPatient, set non-zero pixels to the segment number. Notify
   // about pixels that are initialized more than once.
-  std::vector<unsigned> segmentPixelCnt(100);
-    
+
   DcmIODTypes::Frame *unpackedFrame = NULL;
 
   for(int frameId=0;frameId<fgInterface.getNumberOfFrames();frameId++){
@@ -181,17 +184,21 @@ int main(int argc, char *argv[])
       abort();
     }
 
+    if(segment2image.find(segmentId) == segment2image.end()){
+      typedef itk::ImageDuplicator<ImageType> DuplicatorType;
+      DuplicatorType::Pointer dup = DuplicatorType::New();
+      dup->SetInputImage(segImage);
+      dup->Update();
+      ImageType::Pointer newSegmentImage = dup->GetOutput();
+      newSegmentImage->FillBuffer(0);
+      segment2image[segmentId] = newSegmentImage;
+    }
+
     // WARNING: this is needed only for David's example, which numbers
     // (incorrectly!) segments starting from 0, should start from 1
     if(segmentId == 0){
       std::cerr << "Segment numbers should start from 1!" << std::endl;
       abort();
-    }
-    //segmentId = segmentId+1;
-
-    if(segmentId>segmentPixelCnt.size()){
-      segmentPixelCnt.resize(segmentId+1);
-      segmentPixelCnt[segmentId] = 0;
     }
 
     // get string representation of the frame origin
@@ -204,10 +211,10 @@ int main(int argc, char *argv[])
       }
     }
 
-    if(!segImage->TransformPhysicalPointToIndex(frameOriginPoint, frameOriginIndex)){
+    if(!segment2image[segmentId]->TransformPhysicalPointToIndex(frameOriginPoint, frameOriginIndex)){
       std::cerr << "ERROR: Frame " << frameId << " origin " << frameOriginPoint <<
                    " is outside image geometry!" << frameOriginIndex << std::endl;
-      std::cerr << "Image size: " << segImage->GetBufferedRegion().GetSize() << std::endl;
+      std::cerr << "Image size: " << segment2image[segmentId]->GetBufferedRegion().GetSize() << std::endl;
       return -1;
     }
 
@@ -223,25 +230,14 @@ int main(int argc, char *argv[])
       for(int col=0;col<imageSize[0];col++){
         ImageType::PixelType pixel;
         unsigned bitCnt = row*imageSize[0]+col;
-        //pixel = (frame->pixData[bitCnt/8] >> (bitCnt%8)) & 1;
         pixel = unpackedFrame->pixData[bitCnt];
 
         if(pixel!=0){
-          segmentPixelCnt[segmentId]++;
-          //std::cout << segmentId << ": " << segmentPixelCnt[segmentId] << std::endl;
-          //pixel = pixel+segmentId;
           ImageType::IndexType index;
           index[0] = col;
           index[1] = row;
           index[2] = slice;
-          if(segImage->GetPixel(index)){
-            std::cout << "Warning: overwriting pixel at index " << index << " from " << segImage->GetPixel(index)
-                      << " to " << pixel*segmentId << std::endl;
-            segImage->SetPixel(index, pixel*segmentId+1);
-          } else {
-            segImage->SetPixel(index, pixel*segmentId);
-            //std::cout << pixel*segmentId << " ";
-          }
+          segment2image[segmentId]->SetPixel(index, 1);
         }
       }
     }
@@ -250,19 +246,17 @@ int main(int argc, char *argv[])
       delete unpackedFrame;
   }
 
-  std::cout << "Number of pixels for segments: " << std::endl;
-  for(unsigned i=0;i<segmentPixelCnt.size();i++){
-    if(segmentPixelCnt[i])
-      std::cout << "Segment " << i << ": " << segmentPixelCnt[i] << std::endl;
+  for(std::map<unsigned,ImageType::Pointer>::const_iterator sI=segment2image.begin();sI!=segment2image.end();++sI){
+    typedef itk::ImageFileWriter<ImageType> WriterType;
+    std::stringstream fileNameSStream;
+    // is this safe?
+    fileNameSStream << outputDirName << "/" << sI->first << ".nrrd";
+    WriterType::Pointer writer = WriterType::New();
+    writer->SetFileName(fileNameSStream.str());
+    writer->SetInput(segImage);
+    writer->SetUseCompression(1);
+    writer->Update();
   }
-
-
-  typedef itk::ImageFileWriter<ImageType> WriterType;
-  WriterType::Pointer writer = WriterType::New();
-  writer->SetFileName(outputNRRDFileName);
-  writer->SetInput(segImage);
-  writer->SetUseCompression(1);
-  writer->Update();
 
   return 0;
 }
