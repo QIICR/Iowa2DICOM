@@ -896,7 +896,7 @@ void PopulateMeasurementsGroup(DSRDocumentTree &tree, DSRContainerTreeNode *grou
     CHECK_COND(petDatasets[0]->findAndGetElement(DCM_SeriesInstanceUID, e));
     e->getString(seriesInstanceUID);
     CHECK_COND(seriesUIDNode->setValue(seriesInstanceUID));
-    CHECK_COND(seriesUIDNode->setConceptName(DSRCodedEntryValue("121232","DCM","Source series for image segmentation")));
+    CHECK_COND(seriesUIDNode->setConceptName(DSRCodedEntryValue("121232","DCM","Source series for segmentation")));
     CHECK_COND(tree.addContentItem(seriesUIDNode, DSRTypes::AM_afterCurrent));
   }
 
