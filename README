@@ -6,10 +6,10 @@ and into the 3D Slicer core.
 The process of data conversion is described in the following manuscript:
 
 Fedorov A, Clunie D, Ulrich E, Bauer C, Wahle A, Brown B, Onken M, Riesmeier J, 
-Pieper S, Kikinis R, Buatti J, Beichel RR. (2015) DICOM for quantitative imaging 
-biomarker development: A standards based approach to sharing of clinical data and 
-structured PET/CT analysis results in head and neck cancer research. 
-PeerJ PrePrints 3:e1921 https://dx.doi.org/10.7287/peerj.preprints.1541v1
+Pieper S, Kikinis R, Buatti J, Beichel RR. (2016) DICOM for quantitative imaging 
+biomarker development: a standards based approach to sharing clinical data and 
+structured PET/CT analysis results in head and neck cancer research. PeerJ 4:e2057 
+https://doi.org/10.7717/peerj.2057
 
 The resulting data is available in TCIA QIN-HEADNECK collection:
 
